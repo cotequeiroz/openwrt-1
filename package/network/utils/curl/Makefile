@@ -44,6 +44,7 @@ PKG_CONFIG_DEPENDS:= \
   CONFIG_LIBCURL_FTP \
   CONFIG_LIBCURL_GOPHER \
   CONFIG_LIBCURL_HTTP \
+  CONFIG_LIBCURL_HTTP2 \
   CONFIG_LIBCURL_IMAP \
   CONFIG_LIBCURL_LDAP \
   CONFIG_LIBCURL_LDAPS \
@@ -88,6 +89,7 @@ define Package/libcurl
   CATEGORY:=Libraries
   DEPENDS:= +LIBCURL_CYASSL:libcyassl +LIBCURL_OPENSSL:libopenssl +LIBCURL_GNUTLS:libgnutls +LIBCURL_MBEDTLS:libmbedtls
   DEPENDS += +LIBCURL_ZLIB:zlib +LIBCURL_THREADED_RESOLVER:libpthread +LIBCURL_LDAP:libopenldap +LIBCURL_LIBIDN:libidn +LIBCURL_SSH2:libssh2
+  DEPENDS += +LIBCURL_HTTP2:libnghttp2
   TITLE:=A client-side URL transfer library
   MENU:=1
 endef
@@ -121,6 +123,7 @@ CONFIGURE_ARGS += \
 	$(if $(CONFIG_LIBCURL_LIBIDN),--with-libidn="$(STAGING_DIR)/usr",--without-libidn) \
 	$(if $(CONFIG_LIBCURL_SSH2),--with-libssh2="$(STAGING_DIR)/usr",--without-libssh2) \
 	$(if $(CONFIG_LIBCURL_ZLIB),--with-zlib="$(STAGING_DIR)/usr",--without-zlib) \
+	$(if $(CONFIG_LIBCURL_HTTP2),--with-nghttp2="$(STAGING_DIR)/usr",--without-nghttp2) \
 	\
 	$(call autoconf_bool,CONFIG_LIBCURL_DICT,dict) \
 	$(call autoconf_bool,CONFIG_LIBCURL_FILE,file) \

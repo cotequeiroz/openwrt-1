@@ -45,6 +45,11 @@ config LIBCURL_HTTP
 	bool "HTTP / HTTPS protocol"
 	default y
 
+config LIBCURL_HTTP2
+	bool "HTTP/2 protocol"
+	depends on LIBCURL_HTTP
+	default n
+
 config LIBCURL_COOKIES
 	bool "Enable Cookies support"
 	depends on LIBCURL_HTTP
