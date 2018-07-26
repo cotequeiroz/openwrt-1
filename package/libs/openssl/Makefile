@@ -124,10 +124,10 @@ ifdef CONFIG_OPENSSL_ENGINE
       OPENSSL_OPTIONS += -DUSE_CRYPTODEV_DIGESTS
     endif
   endif
-  ifndef CONFIG_OPENSSL_ENGINE_AFALG
+  ifndef CONFIG_PACKAGE_libopenssl-afalg
     OPENSSL_OPTIONS += no-afalgeng
   endif
-  ifndef CONFIG_OPENSSL_ENGINE_PADLOCK
+  ifndef CONFIG_PACKAGE_libopenssl-padlock
     OPENSSL_OPTIONS += no-hw-padlock
   endif
 else
