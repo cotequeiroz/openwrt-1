@@ -214,7 +214,7 @@ index e1a7ed7e4892..aa8449a5e8fe 100644
  
 -	if (rt2x00_get_field32(reg, INT_SOURCE_CSR_TX_FIFO_STATUS)) {
 +	if (rt2x00_get_field32(reg, INT_SOURCE_CSR_TX_FIFO_STATUS))
- 		rt2800mmio_txstatus_interrupt(rt2x00dev);
+ 		rt2800mmio_txstatus_interrupt(rt2x00dev, txstatus);
 -		/*
 -		 * Never disable the TX_FIFO_STATUS interrupt.
 -		 */
