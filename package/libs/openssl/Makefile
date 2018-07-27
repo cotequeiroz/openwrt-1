@@ -203,12 +203,6 @@ define Build/Configure
 			$(OPENSSL_NO_CIPHERS) \
 			$(OPENSSL_OPTIONS) \
 	)
-#	+$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
-#		CROSS_COMPILE="$(TARGET_CROSS)" \
-#		MAKEDEPPROG="$(TARGET_CROSS)gcc" \
-#		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \
-#		$(OPENSSL_MAKEFLAGS) \
-#		depend
 endef
 
 TARGET_CFLAGS += $(FPIC) -I$(CURDIR)/include -ffunction-sections -fdata-sections
