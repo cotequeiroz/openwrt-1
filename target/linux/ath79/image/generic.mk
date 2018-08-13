@@ -22,6 +22,16 @@ define Device/buffalo_wzr-hp-g450h
 endef
 TARGET_DEVICES += buffalo_wzr-hp-g450h
 
+define Device/dlink_dir-825-b1
+  ATH_SOC := ar7161
+  DEVICE_TITLE := D-LINK DIR-825 B1
+  IMAGE_SIZE := 6208k
+  IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata | check-size $$$$(IMAGE_SIZE)
+  DEVICE_PACKAGES := kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-ledtrig-usbport kmod-leds-reset kmod-owl-loader
+  SUPPORTED_DEVICES += dir-825-b1
+endef
+TARGET_DEVICES += dlink_dir-825-b1
+
 define Device/embeddedwireless_dorin
   ATH_SOC := ar9331
   DEVICE_TITLE := Embedded Wireless Dorin
@@ -56,6 +66,18 @@ define Device/glinet_ar300m_nor
   SUPPORTED_DEVICES += gl-ar300m
 endef
 TARGET_DEVICES += glinet_ar300m_nor
+
+define Device/iodata_wn-ac1600dgr2
+  ATH_SOC := qca9557
+  DEVICE_TITLE := I-O DATA WN-AC1600DGR2
+  IMAGE_SIZE := 14656k
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-kernel | pad-to $$$$(BLOCKSIZE) | \
+    append-rootfs | pad-rootfs | check-size $$$$(IMAGE_SIZE) | \
+    senao-header -r 0x30a -p 0x60 -t 2 -v 200
+  DEVICE_PACKAGES := kmod-usb-core kmod-usb2 kmod-ath10k ath10k-firmware-qca988x
+endef
+TARGET_DEVICES += iodata_wn-ac1600dgr2
 
 define Device/ocedo_koala
   ATH_SOC := qca9558
@@ -112,20 +134,46 @@ define Device/pcs_cr5000
 endef
 TARGET_DEVICES += pcs_cr5000
 
-define Device/netgear_wndr3800
+define Device/netgear_wndr3x00
   ATH_SOC := ar7161
-  DEVICE_TITLE := NETGEAR WNDR3800
-  NETGEAR_KERNEL_MAGIC := 0x33373031
   KERNEL := kernel-bin | append-dtb | lzma -d20 | netgear-uImage lzma
-  KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma -d20 | netgear-uImage lzma
-  NETGEAR_BOARD_ID := WNDR3800
-  NETGEAR_HW_ID := 29763654+16+128
-  IMAGE_SIZE := 15872k
   IMAGES := sysupgrade.bin factory.img
   IMAGE/default := append-kernel | pad-to $$$$(BLOCKSIZE) | netgear-squashfs | append-rootfs | pad-rootfs
   IMAGE/sysupgrade.bin := $$(IMAGE/default) | append-metadata | check-size $$$$(IMAGE_SIZE)
   IMAGE/factory.img := $$(IMAGE/default) | netgear-dni | check-size $$$$(IMAGE_SIZE)
   DEVICE_PACKAGES := kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-ledtrig-usbport kmod-leds-reset
+endef
+
+define Device/netgear_wndr3700
+  $(Device/netgear_wndr3x00)
+  DEVICE_TITLE := NETGEAR WNDR3700
+  NETGEAR_KERNEL_MAGIC := 0x33373030
+  NETGEAR_BOARD_ID := WNDR3700
+  IMAGE_SIZE := 7680k
+  IMAGES += factory-NA.img
+  IMAGE/factory-NA.img := $$(IMAGE/default) | netgear-dni NA | check-size $$$$(IMAGE_SIZE)
+  SUPPORTED_DEVICES += wndr3700
+endef
+TARGET_DEVICES += netgear_wndr3700
+
+define Device/netgear_wndr3700v2
+  $(Device/netgear_wndr3x00)
+  DEVICE_TITLE := NETGEAR WNDR3700v2
+  NETGEAR_KERNEL_MAGIC := 0x33373031
+  NETGEAR_BOARD_ID := WNDR3700v2
+  NETGEAR_HW_ID := 29763654+16+64
+  IMAGE_SIZE := 15872k
+  SUPPORTED_DEVICES += wndr3700v2
+endef
+TARGET_DEVICES += netgear_wndr3700v2
+
+define Device/netgear_wndr3800
+  $(Device/netgear_wndr3x00)
+  DEVICE_TITLE := NETGEAR WNDR3800
+  NETGEAR_KERNEL_MAGIC := 0x33373031
+  NETGEAR_BOARD_ID := WNDR3800
+  NETGEAR_HW_ID := 29763654+16+128
+  IMAGE_SIZE := 15872k
   SUPPORTED_DEVICES += wndr3800
 endef
 TARGET_DEVICES += netgear_wndr3800

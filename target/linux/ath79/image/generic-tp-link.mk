@@ -12,7 +12,7 @@ define Device/tplink_archer-c7-v2
 endef
 TARGET_DEVICES += tplink_archer-c7-v2
 
-define Device/tplink_tl-re450-v2
+define Device/tplink_re450-v2
   $(Device/tplink)
   ATH_SOC := qca9563
   IMAGE_SIZE := 6016k
@@ -27,7 +27,7 @@ define Device/tplink_tl-re450-v2
     append-metadata | check-size $$$$(IMAGE_SIZE)
   IMAGE/factory.bin := append-rootfs | tplink-safeloader factory
 endef
-TARGET_DEVICES += tplink_tl-re450-v2
+TARGET_DEVICES += tplink_re450-v2
 
 define Device/tplink_tl-wdr3600
   $(Device/tplink-8mlzma)
@@ -48,6 +48,15 @@ define Device/tplink_tl-wdr4300
   SUPPORTED_DEVICES += tl-wdr4300
 endef
 TARGET_DEVICES += tplink_tl-wdr4300
+
+define Device/tplink_tl-wdr4900-v2
+  $(Device/tplink-8mlzma)
+  ATH_SOC := qca9558
+  DEVICE_TITLE := TP-LINK TL-WDR4900 v2
+  DEVICE_PACKAGES := kmod-usb-core kmod-usb2 kmod-usb-ledtrig-usbport
+  TPLINK_HWID := 0x49000002
+endef
+TARGET_DEVICES += tplink_tl-wdr4900-v2
 
 define Device/tplink_tl-wr1043nd-v1
   $(Device/tplink-8m)
