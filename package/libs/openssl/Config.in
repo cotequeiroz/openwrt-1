@@ -60,18 +60,18 @@ config OPENSSL_WITH_ASM
 	help
 		Disabling this option will reduce code size and performance.
 		The increase in performance and size depends on the target
-		CPU and on the algorithms being optimized.  As of 1.1.0h*:
+		CPU and on the algorithms being optimized.  As of 1.1.0i*:
 
 		Platform  Pkg Inc. Algorithms where assembly is used - ~% Speed Increase
 		aarch64   174K     BN, aes, sha1, sha256, sha512, nist256, poly1305
 		arm       152K     BN, aes, sha1, sha256, sha512, nist256, poly1305
-		i386      183K     BN-147%, aes-300%, rc4-55%, sha1-160%, sha256-114%, sha512-270%, nist256-282%, poly1305-292%
-		mipsel      1.5K   BN-97%, aes-4%, sha1-94%, sha256-60%
+		i386      183K     BN+147%, aes+300%, rc4+55%, sha1+160%, sha256+114%, sha512+270%, nist256+282%, poly1305+292%
+		mipsel      1.5K   BN+97%, aes+4%, sha1+94%, sha256+60%
 		mips64	    3.7K   BN, aes, sha1, sha256, sha512, poly1305
 		powerpc    20K     BN, aes, sha1, sha256, sha512, poly1305
-		x86_64    228K     BN-220%, aes-173%, rc4-38%, sha1-40%, sha256-64%, sha512-31%, nist256-354%, poly1305-228%
+		x86_64    228K     BN+220%, aes+173%, rc4+38%, sha1+40%, sha256+64%, sha512+31%, nist256+354%, poly1305+228%
 
-		* Your mileage may vary. Only most used algos shown. 
+		* Only most common algorithms shown. Your mileage may vary.
 		  BN (bignum) performance was measured using RSA sign/verify.
 
 config OPENSSL_NO_SSE2
