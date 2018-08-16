@@ -35,6 +35,8 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_ENGINE_CRYPTO \
 	CONFIG_OPENSSL_ENGINE_DIGEST \
 	CONFIG_OPENSSL_ENGINE_PADLOCK \
+	CONFIG_OPENSSL_NO_SSE2 \
+	CONFIG_OPENSSL_WITH_ASM \
 	CONFIG_OPENSSL_WITH_EC \
 	CONFIG_OPENSSL_WITH_EC2M \
 	CONFIG_OPENSSL_WITH_DEPRECATED \
@@ -168,21 +170,31 @@ ifeq ($(CONFIG_OPENSSL_OPTIMIZE_SPEED),y)
   TARGET_CFLAGS := $(filter-out -Os,$(TARGET_CFLAGS)) -O3
 endif
 
+ifndef CONFIG_OPENSSL_WITH_ASM
+  OPENSSL_OPTIONS += no-asm
+endif
+
 ifeq ($(CONFIG_x86_64),y)
   OPENSSL_TARGET:=linux-x86_64-openwrt
   OPENSSL_MAKEFLAGS += LIBDIR=lib
-else
-  OPENSSL_OPTIONS+=no-sse2
-  ifeq ($(CONFIG_mips)$(CONFIG_mipsel),y)
-    OPENSSL_TARGET:=linux-mips32-openwrt
-  else ifeq ($(CONFIG_aarch64),y)
-    OPENSSL_TARGET:=linux-aarch64-openwrt
-  else ifeq ($(CONFIG_arm)$(CONFIG_armeb),y)
-    OPENSSL_TARGET:=linux-armv4-openwrt
-  else
-    OPENSSL_TARGET:=linux-generic-openwrt
-    OPENSSL_OPTIONS+=no-perlasm
+else ifeq ($(CONFIG_aarch64),y)
+  OPENSSL_TARGET:=linux-aarch64-openwrt
+else ifeq ($(CONFIG_arm)$(CONFIG_armeb),y)
+  OPENSSL_TARGET:=linux-armv4-openwrt
+else ifeq ($(CONFIG_i386),y)
+  OPENSSL_TARGET:=linux-x86-openwrt
+  ifeq ($(OPENSSL_NO_SSE2),y)
+    OPENSSL_OPTIONS += no-sse2
   endif
+else ifeq ($(CONFIG_mips)$(CONFIG_mipsel),y)
+  OPENSSL_TARGET:=linux-mips32-openwrt
+else ifeq ($(CONFIG_mips64)$(CONFIG_mips64el),y)
+  OPENSSL_TARGET:=linux-mips64-openwrt
+  OPENSSL_MAKEFLAGS += LIBDIR=lib
+else ifeq ($(CONFIG_powerpc),y)
+  OPENSSL_TARGET:=linux-ppc-openwrt
+else
+  OPENSSL_TARGET:=linux-generic32-openwrt
 endif
 
 STAMP_CONFIGURED := $(STAMP_CONFIGURED)_$(shell echo $(OPENSSL_OPTIONS) | mkhash md5)
