@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openssl
-PKG_BASE:=1.1.0
-PKG_BUGFIX:=i
+PKG_BASE:=1.1.1
+PKG_BUGFIX:=-pre8
 PKG_VERSION:=$(PKG_BASE)$(PKG_BUGFIX)
 PKG_RELEASE:=1
 PKG_USE_MIPS16:=0
@@ -24,7 +24,7 @@ PKG_SOURCE_URL:= \
 	http://gd.tuwien.ac.at/infosys/security/openssl/source/ \
 	http://www.openssl.org/source/ \
 	http://www.openssl.org/source/old/$(PKG_BASE)/
-PKG_HASH:=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
+PKG_HASH:=1205cd763dd92c910cc590658a5b0774599e8587d89d6debd948f242b949321e
 
 PKG_LICENSE:=OpenSSL
 PKG_LICENSE_FILES:=LICENSE
