@@ -1,0 +1,16 @@
+--- a/Configurations/unix-Makefile.tmpl
++++ b/Configurations/unix-Makefile.tmpl
+@@ -314,11 +314,11 @@ BIN_LDFLAGS={- join(' ', $target{bin_lfl
+ BIN_EX_LIBS=$(CNF_EX_LIBS) $(EX_LIBS)
+ 
+ # CPPFLAGS_Q is used for one thing only: to build up buildinf.h
+-CPPFLAGS_Q={- $cppflags1 =~ s|([\\"])|\\$1|g;
++CPPFLAGS_Q=$(filter-out -I$(TOPDIR)%,{- $cppflags1 =~ s|([\\"])|\\$1|g;
+               $cppflags2 =~ s|([\\"])|\\$1|g;
+               $lib_cppflags =~ s|([\\"])|\\$1|g;
+               join(' ', $lib_cppflags || (), $cppflags2 || (),
+-                        $cppflags1 || ()) -}
++                        $cppflags1 || ()) -})
+ 
+ PERLASM_SCHEME= {- $target{perlasm_scheme} -}
+ 
