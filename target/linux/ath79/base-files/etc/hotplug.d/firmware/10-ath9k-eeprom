@@ -97,6 +97,9 @@ board=$(board_name)
 case "$FIRMWARE" in
 "ath9k-eeprom-ahb-18100000.wmac.bin")
 	case $board in
+	avm,fritz4020)
+		ath9k_eeprom_extract_reverse "urlader" 5441 1088
+		;;
 	iodata,wn-ac1167dgr|\
 	iodata,wn-ac1600dgr2)
 		ath9k_eeprom_extract "art" 4096 1088
@@ -134,6 +137,11 @@ case "$FIRMWARE" in
 	tplink,tl-wr741-v1|\
 	tplink,tl-wr743nd-v1|\
 	tplink,tl-wr841-v7|\
+	ubnt,bullet-m|\
+	ubnt,nano-m|\
+	ubnt,rocket-m)
+		ath9k_eeprom_extract "art" 4096 4096
+		;;
 	ubnt,unifi)
 		ath9k_eeprom_extract "art" 4096 2048
 		;;

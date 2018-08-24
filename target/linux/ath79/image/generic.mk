@@ -13,6 +13,19 @@ define Device/avm_fritz300e
 endef
 TARGET_DEVICES += avm_fritz300e
 
+define Device/avm_fritz4020
+  ATH_SOC := qca9561
+  DEVICE_TITLE := AVM FRITZ!Box 4020
+  IMAGE_SIZE := 15232k
+  KERNEL := kernel-bin | append-dtb | lzma | eva-image
+  KERNEL_INITRAMFS := $$(KERNEL)
+  IMAGE/sysupgrade.bin := append-kernel | pad-to 64k | \
+      append-squashfs-fakeroot-be | pad-to 256 | \
+      append-rootfs | pad-rootfs | append-metadata | check-size $$$$(IMAGE_SIZE)
+  DEVICE_PACKAGES := fritz-tffs
+endef
+TARGET_DEVICES += avm_fritz4020
+
 define Device/buffalo_wzr-hp-g450h
   ATH_SOC := ar7242
   DEVICE_TITLE := Buffalo WZR-HP-G450H
@@ -66,6 +79,13 @@ define Device/glinet_ar300m_nor
   SUPPORTED_DEVICES += gl-ar300m
 endef
 TARGET_DEVICES += glinet_ar300m_nor
+
+define Device/iodata_etg3-r
+  ATH_SOC := ar9342
+  DEVICE_TITLE := I-O DATA ETG3-R
+  IMAGE_SIZE := 7680k
+endef
+TARGET_DEVICES += iodata_etg3-r
 
 define Device/iodata_wn-ac1167dgr
   ATH_SOC := qca9557
@@ -185,7 +205,6 @@ define Device/pisen_wmm003n
   DEVICE_TITLE := Pisen WMM003N (Cloud Easy Power)
   DEVICE_PACKAGES := kmod-usb-core kmod-usb2 kmod-usb-chipidea2
   TPLINK_HWID := 0x07030101
-  SUPPORTED_DEVICES += wmm003n
   IMAGES := sysupgrade.bin
 endef
 TARGET_DEVICES += pisen_wmm003n
