@@ -5,23 +5,39 @@ choice
 	default OPENSSL_USE_VERSION_1_1_0
 	help
 		Select the version of OpenSSL you wish to use.
-	
+
 	config OPENSSL_USE_VERSION_1_0_2
 		bool "OpensSSL v. 1.0.2 (LTS) series"
 		help
 		   1.0.2 is a Long Term Support (LTS) series, supported by
 		   upstream until 31st December 2009.
-	
+
 	config OPENSSL_USE_VERSION_1_1_0
 		bool "OpenSSL v. 1.1.0 (stable) series"
 		help
 		   1.1.0 is the current stable series.
-	
+
 	config OPENSSL_USE_VERSION_1_1_1
 		bool "OpenSSL v. 1.1.1 (development) series"
 		help
 		   1.1.1 is the latest development series, currently in beta.
 endchoice
+
+config OPENSSL_WITH_TLS13
+	bool
+	default y
+	prompt "Enable support for TLS 1.3"
+	depends on OPENSSL_USE_VERSION_1_1_1
+	select OPENSSL_WITH_EC
+	help
+		TLS 1.3 is the newest verstion of the TLS specification.
+		It aims:
+		 * to increase the overall security of the protocol,
+		   removing outdated algorithms, and encrypting more of the
+		   protocol;
+		 * to increase performance by reducing the number of round-trips
+		   when performing a full handshake.
+		It increases package size by ~4KB.
 
 config OPENSSL_WITH_EC
 	bool
@@ -52,6 +68,19 @@ config OPENSSL_WITH_CHACHA_POLY1305
 		It is 3x faster than AES, when not using a CPU with AES-specific
 		instructions, as is the case of most embedded devices.
 
+config OPENSSL_PREFER_CHACHA_OVER_GCM
+	bool
+#	default y if !ARCH_64BIT
+	default n
+	prompt "Prefer ChaCha20-Poly1305 over AES-GCM by default"
+	depends on OPENSSL_WITH_CHACHA_POLY1305
+	help
+		The default openssl preference is for AES-GCM before ChaCha, but
+		that takes into account AES-NI capable chips.  It is not the
+		case with most embedded chips, so it may be better to invert
+		that preference.  This is just for the default case. The
+		application can always override this.
+
 config OPENSSL_WITH_DTLS
 	bool
 	default n
@@ -70,6 +99,14 @@ config OPENSSL_WITH_COMPRESSION
 		Even with this option turned on, it is disabled by default, and the
 		application must explicitly turn it on.
 
+config OPENSSL_WITH_NPN
+	bool
+	default n
+	prompt "Enable NPN support"
+	help
+		NPN is a TLS extension, obsoleted and replaced with ALPN,
+		used to negotiate SPDY, and HTTP/2.
+
 config OPENSSL_WITH_PSK
 	bool
 	default y
@@ -85,6 +122,14 @@ config OPENSSL_WITH_SRP
 		The Secure Remote Password protocol (SRP) is an augmented
 		password-authenticated key agreement (PAKE) protocol, specifically
 		designed to work around existing patents.
+
+config OPENSSL_WITH_CMS
+	bool
+	default y
+	prompt "Enable CMS (RFC 5652) support"
+	help
+		Cryptographic Message Syntax (CMS) is used to digitally sign,
+		digest, authenticate, or encrypt arbitrary message content.
 
 config OPENSSL_WITH_DEPRECATED
 	bool
@@ -131,10 +176,10 @@ config OPENSSL_WITH_ASM
 		* Only most common algorithms shown. Your mileage may vary.
 		  BN (bignum) performance was measured using RSA sign/verify.
 
-config OPENSSL_NO_SSE2
+config OPENSSL_WITH_SSE2
 	bool
-	default y if TARGET_x86_legacy || TARGET_x86_geode
-	prompt "Disable use of x86 SSE2 instructions"
+	default y if !TARGET_x86_legacy && !TARGET_x86_geode
+	prompt "Enable use of x86 SSE2 instructions"
 	help
 		Use of SSE2 instructions greatly increase performance (up to
 		3x faster) with a minimum (~0.2%, or 23KB) increase in package
@@ -215,15 +260,6 @@ config OPENSSL_WITH_WHIRLPOOL
 	default n
 	prompt "Enable Whirlpool digest support"
 	depends on OPENSSL_OTHER_OPTIONS
-
-config OPENSSL_WITH_CMS
-	bool
-	default n
-	prompt "Enable CMS (RFC 5652) support"
-	depends on OPENSSL_OTHER_OPTIONS
-	help
-		Cryptographic Message Syntax (CMS) is used to digitally sign,
-		digest, authenticate, or encrypt arbitrary message content.
 
 config OPENSSL_WITH_RFC3779
 	bool

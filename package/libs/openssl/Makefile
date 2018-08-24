@@ -18,14 +18,14 @@ endif
 ifdef CONFIG_OPENSSL_USE_VERSION_1_1_0
 PKG_BASE:=1.1.0
 PKG_BUGFIX:=i
-PKG_HASH:=50a98e07b1a89eb8f6a99477f262df71c6fa7bef77df4dc83025a2845c827d00
+PKG_HASH:=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
 ENGINES_DIR=engines-1.1
 endif
 
 ifdef CONFIG_OPENSSL_USE_VERSION_1_1_1
 PKG_BASE:=1.1.1
-PKG_BUGFIX:=-pre8
-PKG_HASH:=1205cd763dd92c910cc590658a5b0774599e8587d89d6debd948f242b949321e
+PKG_BUGFIX:=-pre9
+PKG_HASH:=95ebdfbb05e8451fb01a186ccaa4a7da0eff9a48999ede9fe1a7d90db75ccb4c
 ENGINES_DIR=engines-1.1
 endif
 
@@ -53,8 +53,8 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_ENGINE_CRYPTO \
 	CONFIG_OPENSSL_ENGINE_DIGEST \
 	CONFIG_OPENSSL_ENGINE_PADLOCK \
-	CONFIG_OPENSSL_NO_SSE2 \
 	CONFIG_OPENSSL_OPTIMIZE_SPEED \
+	CONFIG_OPENSSL_PREFER_CHACHA_OVER_GCM \
 	CONFIG_OPENSSL_USE_VERSION_1_0_2 \
 	CONFIG_OPENSSL_USE_VERSION_1_1_0 \
 	CONFIG_OPENSSL_USE_VERSION_1_1_1 \
@@ -73,11 +73,14 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_WITH_GOST \
 	CONFIG_OPENSSL_WITH_IDEA \
 	CONFIG_OPENSSL_WITH_MDC2 \
+	CONFIG_OPENSSL_WITH_NPN \
 	CONFIG_OPENSSL_WITH_PSK \
 	CONFIG_OPENSSL_WITH_RFC3779 \
 	CONFIG_OPENSSL_WITH_SEED \
 	CONFIG_OPENSSL_WITH_SM234 \
 	CONFIG_OPENSSL_WITH_SRP \
+	CONFIG_OPENSSL_WITH_SSE2 \
+	CONFIG_OPENSSL_WITH_TLS13 \
 	CONFIG_OPENSSL_WITH_WHIRLPOOL
 
 include $(INCLUDE_DIR)/package.mk
@@ -140,33 +143,46 @@ define Package/libopenssl-afalg
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=AFALG hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO @!LINUX_3_18
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO @!LINUX_3_18 @OPENSSL_OTHER_OPTIONS
 endef
 
 define Package/libopenssl-gost
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=Russian GOST algorithms engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_WITH_GOST
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 @OPENSSL_OTHER_OPTIONS +@OPENSSL_WITH_GOST
 endef
 
 define Package/libopenssl-padlock
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=VIA Padlock hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86 @OPENSSL_OTHER_OPTIONS
 endef
 
-OPENSSL_OPTIONS:= shared no-err no-nextprotoneg
+OPENSSL_OPTIONS:= shared no-err
 
 ifdef CONFIG_OPENSSL_USE_VERSION_1_0_2
-  OPENSSL_OPTIONS += no-heartbeats no-ssl3-method no-ssl2-method
+  OPENSSL_OPTIONS += no-heartbeats no-sha0 no-ssl2-method no-ssl3-method
+  # openssl 1.0.2 will not disable anything unless no-dtls1 is used.
+  # Even with no-dtls and no-dtls1 options, the library keeps the DTLS code,
+  # but openssl util gets built without it
+  ifndef CONFIG_OPENSSL_WITH_DTLS
+    OPENSSL_OPTIONS += no-dtls1
+  endif
 else
   ifndef CONFIG_OPENSSL_WITH_BLAKE2
     OPENSSL_OPTIONS += no-blake2
   endif
   ifndef CONFIG_OPENSSL_WITH_CHACHA_POLY1305
     OPENSSL_OPTIONS += no-chacha no-poly1305
+  else
+    ifdef CONFIG_OPENSSL_PREFER_CHACHA_OVER_GCM
+      OPENSSL_OPTIONS += -DOPENSSL_PREFER_CHACHA_OVER_GCM
+    endif
+  endif
+  ifndef CONFIG_OPENSSL_WITH_ASYNC
+    OPENSSL_OPTIONS += no-async
   endif
 endif
 
@@ -179,6 +195,15 @@ ifndef CONFIG_OPENSSL_WITH_EC2M
 endif
 
 ifdef CONFIG_OPENSSL_USE_VERSION_1_1_1
+# For reproducible builds, set a fixed date to show. It could be
+# `date -r $(PKG_BUILD_DIR)/README %s`, but 1970-01-01 00:00:01 will get
+# the message through. This may not be needed with the final release.
+# Note that 0 won't work!
+  OPENSSL_MAKEFLAGS += SOURCE_DATE_EPOCH=1
+
+  ifndef CONFIG_OPENSSL_WITH_TLS13
+    OPENSSL_OPTIONS += no-tls1_3
+  endif
   ifndef CONFIG_OPENSSL_WITH_ARIA
     OPENSSL_OPTIONS += no-aria
   endif
@@ -247,10 +272,6 @@ else
   OPENSSL_OPTIONS += no-engine
 endif
 
-ifndef CONFIG_OPENSSL_WITH_ASYNC
-  OPENSSL_OPTIONS += no-async
-endif
-
 ifndef CONFIG_OPENSSL_WITH_GOST
   OPENSSL_OPTIONS += no-gost
 endif
@@ -265,6 +286,10 @@ else
   OPENSSL_OPTIONS += no-comp
 endif
 
+ifndef CONFIG_OPENSSL_WITH_NPN
+  OPENSSL_OPTIONS += no-nextprotoneg
+endif
+
 ifndef CONFIG_OPENSSL_WITH_PSK
   OPENSSL_OPTIONS += no-psk
 endif
@@ -277,8 +302,10 @@ ifndef CONFIG_OPENSSL_WITH_ASM
   OPENSSL_OPTIONS += no-asm
 endif
 
-ifdef CONFIG_OPENSSL_NO_SSE2
-  OPENSSL_OPTIONS += no-sse2
+ifdef CONFIG_i386
+  ifndef CONFIG_OPENSSL_SSE2
+    OPENSSL_OPTIONS += no-sse2
+  endif
 endif
 
 OPENSSL_TARGET:=linux-$(CONFIG_ARCH)-openwrt

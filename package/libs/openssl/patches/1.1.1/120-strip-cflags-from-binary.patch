@@ -1,16 +1,11 @@
---- a/Configurations/unix-Makefile.tmpl
-+++ b/Configurations/unix-Makefile.tmpl
-@@ -314,11 +314,11 @@ BIN_LDFLAGS={- join(' ', $target{bin_lfl
- BIN_EX_LIBS=$(CNF_EX_LIBS) $(EX_LIBS)
+--- a/crypto/build.info
++++ b/crypto/build.info
+@@ -10,7 +10,7 @@ EXTRA=  ../ms/uplink-x86.pl ../ms/uplink
+         ppccpuid.pl pariscid.pl alphacpuid.pl arm64cpuid.pl armv4cpuid.pl
  
- # CPPFLAGS_Q is used for one thing only: to build up buildinf.h
--CPPFLAGS_Q={- $cppflags1 =~ s|([\\"])|\\$1|g;
-+CPPFLAGS_Q=$(filter-out -I$(TOPDIR)%,{- $cppflags1 =~ s|([\\"])|\\$1|g;
-               $cppflags2 =~ s|([\\"])|\\$1|g;
-               $lib_cppflags =~ s|([\\"])|\\$1|g;
-               join(' ', $lib_cppflags || (), $cppflags2 || (),
--                        $cppflags1 || ()) -}
-+                        $cppflags1 || ()) -})
+ DEPEND[cversion.o]=buildinf.h
+-GENERATE[buildinf.h]=../util/mkbuildinf.pl "$(CC) $(LIB_CFLAGS) $(CPPFLAGS_Q)" "$(PLATFORM)"
++GENERATE[buildinf.h]=../util/mkbuildinf.pl "$(filter-out -I$(TOPDIR)% -iremap%,$(CC) $(LIB_CFLAGS) $(CPPFLAGS_Q))" "$(PLATFORM)"
+ DEPEND[buildinf.h]=../configdata.pm
  
- PERLASM_SCHEME= {- $target{perlasm_scheme} -}
- 
+ GENERATE[uplink-x86.s]=../ms/uplink-x86.pl $(PERLASM_SCHEME)

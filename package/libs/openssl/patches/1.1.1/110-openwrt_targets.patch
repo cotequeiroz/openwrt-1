@@ -8,7 +8,7 @@
 +my %targets = (
 +    "openwrt" => {
 +	template	=> 1,
-+	cflags		=> add("\$(OPENWRT_OPTIMIZATION_FLAGS)"),
++	CFLAGS		=> add("\$(OPENWRT_OPTIMIZATION_FLAGS)"),
 +    },
 +    "linux-aarch64-openwrt" => {
 +        inherit_from    => [ "linux-aarch64", "openwrt" ],
