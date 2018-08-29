@@ -158,6 +158,10 @@ define Package/hostapd/description
  Authenticator.
 endef
 
+define Package/hostpad-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
+endef
+
 define Package/hostapd-openssl
 $(call Package/hostapd/Default,$(1))
   TITLE+= (full)
@@ -210,6 +214,10 @@ define Package/wpad/description
  Authenticator and Supplicant
 endef
 
+define Package/wpad-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
+endef
+
 define Package/wpad-openssl
 $(call Package/wpad/Default,$(1))
   TITLE+= (full)
@@ -249,6 +257,10 @@ define Package/wpad-mesh/description
  This package contains a minimal IEEE 802.1x/WPA Authenticator and Supplicant (with 802.11s mesh and SAE support).
 endef
 
+define Package/wpad-mesh-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
+endef
+
 define Package/wpad-mesh-openssl
 $(call Package/wpad-mesh,$(1))
   DEPENDS+=+libopenssl
@@ -282,6 +294,10 @@ $(call Package/wpa-supplicant/Default,$(1))
   VARIANT:=supplicant-full-internal
 endef
 
+define Package/wpa-supplicant-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
+endef
+
 define Package/wpa-supplicant-openssl
 $(call Package/wpa-supplicant/Default,$(1))
   VARIANT:=supplicant-full-openssl
@@ -309,6 +325,10 @@ $(call Package/wpa-supplicant/Default,$(1))
   TITLE+= (with 802.11s and SAE)
   DEPENDS+=@PACKAGE_kmod-cfg80211 @(!TARGET_uml||BROKEN)
   PROVIDES+=wpa-supplicant-mesh
+endef
+
+define Package/wpa-supplicant-mesh-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
 endef
 
 define Package/wpa-supplicant-mesh-openssl
@@ -362,6 +382,10 @@ define Package/eapol-test
   CATEGORY:=Network
   VARIANT:=supplicant-full-internal
   DEPENDS:=$(DRV_DEPENDS)
+endef
+
+define Package/eapol-test-openssl/config
+  select OPENSSL_WITH_DEPRECATED if !OPENSSL_USE_VERSION_1_0_2
 endef
 
 define Package/eapol-test-openssl
