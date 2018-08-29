@@ -87,6 +87,12 @@ define Package/lldpd/conffiles
 /etc/config/lldpd
 endef
 
+ifndef CONFIG_USE_GLIBC
+CONFIGURE_VARS += \
+	libbsd_CFLAGS=" " \
+	libbsd_LIBS=" "
+endif
+
 CONFIGURE_ARGS += \
 	$(if $(CONFIG_LLDPD_WITH_PRIVSEP), \
 	--with-privsep-user=lldp \
