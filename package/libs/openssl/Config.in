@@ -7,7 +7,7 @@ choice
 		Select the version of OpenSSL you wish to use.
 
 	config OPENSSL_USE_VERSION_1_0_2
-		bool "OpensSSL v. 1.0.2 (LTS) series"
+		bool "OpenSSL v. 1.0.2 (LTS) series"
 		help
 		   1.0.2 is a Long Term Support (LTS) series, supported by
 		   upstream until 31st December 2009.
@@ -138,7 +138,6 @@ config OPENSSL_WITH_CMS
 config OPENSSL_WITH_DEPRECATED
 	bool
 	default y
-	depends on !OPENSSL_USE_VERSION_1_0_2
 	prompt "Include deprecated APIs (See help for a list of packages that need this)"
 	help
 		Since openssl 1.1.x is still new to openwrt, some packages
