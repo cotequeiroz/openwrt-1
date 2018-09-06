@@ -153,21 +153,21 @@ define Package/libopenssl-afalg
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=AFALG hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO @!LINUX_3_18 @OPENSSL_OTHER_OPTIONS
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO @!LINUX_3_18
 endef
 
 define Package/libopenssl-gost
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=Russian GOST algorithms engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 @OPENSSL_OTHER_OPTIONS +@OPENSSL_WITH_GOST
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_WITH_GOST
 endef
 
 define Package/libopenssl-padlock
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=VIA Padlock hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86 @OPENSSL_OTHER_OPTIONS
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86
 endef
 
 OPENSSL_OPTIONS:= shared no-err
