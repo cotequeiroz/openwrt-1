@@ -21,6 +21,13 @@ choice
 		bool "OpenSSL v. 1.1.1 (development) series"
 		help
 		   1.1.1 is the latest development series, currently in beta.
+
+	config OPENSSL_USE_LIBRESSL_2_7
+		bool "LibreSSL 2.7.x series"
+		select OPENSSL_WITH_EC
+		select OPENSSL_WITH_EC2M
+		help
+		   LibreSSL support, still in a very early stage.
 endchoice
 
 config OPENSSL_WITH_TLS13
@@ -280,6 +287,7 @@ config OPENSSL_WITH_RFC3779
 
 config OPENSSL_ENGINE
 	bool "Enable engine support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		This enables alternative cryptography implementations,
 		most commonly for interfacing with external crypto devices,

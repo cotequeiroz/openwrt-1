@@ -8,6 +8,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openssl
+PKG_SOURCE_URL:= \
+	http://ftp.fi.muni.cz/pub/openssl/source/ \
+	http://ftp.linux.hr/pub/openssl/source/ \
+	http://gd.tuwien.ac.at/infosys/security/openssl/source/ \
+	http://www.openssl.org/source/ \
+	http://www.openssl.org/source/old/$(PKG_BASE)/
+
 ifdef CONFIG_OPENSSL_USE_VERSION_1_0_2
 PKG_BASE:=1.0.2
 PKG_BUGFIX:=p
@@ -29,6 +36,16 @@ PKG_HASH:=95ebdfbb05e8451fb01a186ccaa4a7da0eff9a48999ede9fe1a7d90db75ccb4c
 ENGINES_DIR=engines-1.1
 endif
 
+ifdef CONFIG_OPENSSL_USE_LIBRESSL_2_7
+PKG_BASE:=2.7
+PKG_BUGFIX:=.4
+PKG_HASH:=1e3a9fada06c1c060011470ad0ff960de28f9a0515277d7336f7e09362517da6
+ENGINES_DIR=engines
+PKG_NAME=libressl
+PKG_SOURCE_URL:= \
+	https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/
+endif
+
 PKG_VERSION:=$(PKG_BASE)$(PKG_BUGFIX)
 PKG_RELEASE:=1
 PKG_USE_MIPS16:=0
@@ -36,15 +53,7 @@ PATCH_DIR=./patches/$(PKG_BASE)
 
 PKG_BUILD_PARALLEL:=0
 
-
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:= \
-	http://ftp.fi.muni.cz/pub/openssl/source/ \
-	http://ftp.linux.hr/pub/openssl/source/ \
-	http://gd.tuwien.ac.at/infosys/security/openssl/source/ \
-	http://www.openssl.org/source/ \
-	http://www.openssl.org/source/old/$(PKG_BASE)/
-
 PKG_LICENSE:=OpenSSL
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:openssl:openssl
@@ -58,6 +67,7 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_USE_VERSION_1_0_2 \
 	CONFIG_OPENSSL_USE_VERSION_1_1_0 \
 	CONFIG_OPENSSL_USE_VERSION_1_1_1 \
+	CONFIG_OPENSSL_USE_LIBRESSL_2_7 \
 	CONFIG_OPENSSL_WITH_ARIA \
 	CONFIG_OPENSSL_WITH_ASM \
 	CONFIG_OPENSSL_WITH_ASYNC \
@@ -316,7 +326,7 @@ endif
 
 STAMP_CONFIGURED := $(STAMP_CONFIGURED)_$(shell echo $(OPENSSL_OPTIONS) | mkhash md5)
 
-define Build/Configure
+define Build/Configure/openssl
 	[ -f $(STAMP_CONFIGURED) ] || { \
 		rm -f $(PKG_BUILD_DIR)/*.so.* $(PKG_BUILD_DIR)/*.a; \
 		find $(PKG_BUILD_DIR) -name \*.o | xargs rm -f; \
@@ -336,13 +346,20 @@ define Build/Configure
 		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \
 		$(OPENSSL_MAKEFLAGS) \
 		depend,)
+endef
 
+define Build/Configure/libressl
+	$(call Build/Configure/Default)
+endef
+
+define Build/Configure
+	$(call Build/Configure/$(PKG_NAME))
 endef
 
 TARGET_CFLAGS += $(FPIC) -I$(CURDIR)/include -ffunction-sections -fdata-sections
 TARGET_LDFLAGS += -Wl,--gc-sections
 
-define Build/Compile
+define Build/Compile/openssl
 	+$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
 		CROSS_COMPILE="$(TARGET_CROSS)" \
 		CC="$(TARGET_CC)" \
@@ -377,22 +394,45 @@ define Build/Compile
 		$(if $(CONFIG_OPENSSL_USE_VERSION_1_0_2),install,install_sw install_ssldirs)
 endef
 
-define Build/InstallDev
-	$(INSTALL_DIR) $(1)/usr/include
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/openssl $(1)/usr/include/
-	$(INSTALL_DIR) $(1)/usr/lib/
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib{crypto,ssl}.{a,so*} $(1)/usr/lib/
-	$(INSTALL_DIR) $(1)/usr/lib/pkgconfig
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/pkgconfig/{openssl,libcrypto,libssl}.pc $(1)/usr/lib/pkgconfig/
-	[ -n "$(TARGET_LDFLAGS)" ] && $(SED) 's#$(TARGET_LDFLAGS)##g' $(1)/usr/lib/pkgconfig/{openssl,libcrypto,libssl}.pc || true
+define Build/Compile/libressl
+	$(call Build/Compile/Default)
+	$(call Build/Install/Default)
 endef
 
-define Package/libopenssl/install
-	$(INSTALL_DIR) $(1)/usr/lib
+define Build/Compile
+	$(call Build/Compile/$(PKG_NAME))
+endef
+
+define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/. $(1)/usr/include/
+	$(INSTALL_DIR) $(1)/usr/lib/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/lib*.{a,so*} \
+		$(1)/usr/lib/
+	$(INSTALL_DIR) $(1)/usr/lib/pkgconfig
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/pkgconfig/{openssl,lib*}.pc \
+		$(1)/usr/lib/pkgconfig/
+	[ -n "$(TARGET_LDFLAGS)" ] && $(SED) 's#$(TARGET_LDFLAGS)##g' \
+		$(1)/usr/lib/pkgconfig/{openssl,libcrypto,libssl}.pc \
+		$(if $(CONFIG_OPENSSL_USE_LIBRESSL_2_7),$(1)/usr/lib/pkgconfig/libtls.pc) \
+		|| true
+endef
+
+define Package/libopenssl/install/openssl
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libcrypto.so.* $(1)/usr/lib/
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libssl.so.* $(1)/usr/lib/
 	$(if $(CONFIG_OPENSSL_ENGINE),$(INSTALL_DIR) $(1)/usr/lib/$(ENGINES_DIR))
 endef
+
+define Package/libopenssl/install/libressl
+	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/lib*.so.?? $(1)/usr/lib/
+endef
+
+define Package/libopenssl/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(call Package/libopenssl/install/$(PKG_NAME),$(1))
+endef
+
 
 define Package/openssl-util/install
 	$(INSTALL_DIR) $(1)/etc/ssl
