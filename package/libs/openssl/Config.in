@@ -99,7 +99,7 @@ config OPENSSL_WITH_DEPRECATED
 		requiring this option do not list it as a requirement yet.
 
 		For openssl version 1.1.x:
-		 * hostapd, freeswitch-stable, freeswitch, python, python3, squid.
+		 * freeswitch-stable, freeswitch, python, python3, squid.
 
 		For openssl 1.0.2, squid currently requires this.
 
