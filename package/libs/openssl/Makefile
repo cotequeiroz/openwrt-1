@@ -384,6 +384,11 @@ define Build/InstallDev
 endef
 
 define Package/libopenssl/install
+	$(INSTALL_DIR) $(1)/etc/ssl
+	$(CP) $(PKG_INSTALL_DIR)/etc/ssl/openssl.cnf $(1)/etc/ssl/
+	$(INSTALL_DIR) $(1)/etc/ssl/certs
+	$(INSTALL_DIR) $(1)/etc/ssl/private
+	chmod 0700 $(1)/etc/ssl/private
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libcrypto.so.* $(1)/usr/lib/
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libssl.so.* $(1)/usr/lib/
@@ -391,11 +396,6 @@ define Package/libopenssl/install
 endef
 
 define Package/openssl-util/install
-	$(INSTALL_DIR) $(1)/etc/ssl
-	$(CP) $(PKG_INSTALL_DIR)/etc/ssl/openssl.cnf $(1)/etc/ssl/
-	$(INSTALL_DIR) $(1)/etc/ssl/certs
-	$(INSTALL_DIR) $(1)/etc/ssl/private
-	chmod 0700 $(1)/etc/ssl/private
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/openssl $(1)/usr/bin/
 endef
