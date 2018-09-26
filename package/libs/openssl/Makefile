@@ -146,7 +146,8 @@ define Package/libopenssl-afalg
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=AFALG hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO @!LINUX_3_18
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @!OPENSSL_USE_VERSION_1_0_2 +@KERNEL_AIO \
+	   @!LINUX_3_18 +kmod-crypto-user
 endef
 
 define Package/libopenssl-gost
@@ -160,7 +161,7 @@ define Package/libopenssl-padlock
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=VIA Padlock hardware acceleration engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86 +kmod-crypto-hw-padlock
 endef
 
 OPENSSL_OPTIONS:= shared no-err
