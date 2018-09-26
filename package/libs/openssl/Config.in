@@ -10,7 +10,7 @@ choice
 		bool "OpenSSL v. 1.0.2 (old LTS) series"
 		help
 		   1.0.2 is a Long Term Support (LTS) series, supported by
-		   upstream until 31st December 2009.
+		   upstream until 31st December 2019.
 
 	config OPENSSL_USE_VERSION_1_1_0
 		bool "OpenSSL v. 1.1.0 (stable) series"
@@ -169,9 +169,9 @@ config OPENSSL_WITH_EC
 		cryptography to provide equivalent security.
 
 config OPENSSL_WITH_EC2M
-        bool
-        depends on OPENSSL_WITH_EC
-        prompt "Enable ec2m support"
+	bool
+	depends on OPENSSL_WITH_EC
+	prompt "Enable ec2m support"
 	help
 		This option enables the more efficient, yet less common, binary
 		field elliptic curves.
@@ -211,9 +211,9 @@ config OPENSSL_WITH_PSK
 comment "Less commonly used build options"
 
 config OPENSSL_WITH_ARIA
-        bool
-        default n
-        prompt "Enable ARIA support"
+	bool
+	default n
+	prompt "Enable ARIA support"
 	depends on OPENSSL_USE_VERSION_1_1_1
 	help
 		ARIA is a block cipher developed in South Korea, based on AES.
