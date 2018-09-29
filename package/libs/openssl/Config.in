@@ -13,10 +13,12 @@ choice
 		   upstream until 31st December 2019.
 
 	config OPENSSL_USE_VERSION_1_1_0
-		bool "OpenSSL v. 1.1.0 (stable) series"
+		bool "OpenSSL v. 1.1.0 series (EOL at openwrt)"
 		help
 		   1.1.0 is the previous stable series, supported by upstream
 		   (security fixes only) until 11th September 2019.
+		   This version is not currently supported by openwrt, and
+		   could be dropped before its upstream EOL.
 
 	config OPENSSL_USE_VERSION_1_1_1
 		bool "OpenSSL v. 1.1.1 (new LTS) series"
