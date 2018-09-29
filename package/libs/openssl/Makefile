@@ -133,7 +133,7 @@ define Package/openssl-util
   TITLE+= (utility)
 endef
 
-define Package/openssl/conffiles
+define Package/libopenssl/conffiles
 /etc/ssl/openssl.cnf
 endef
 
