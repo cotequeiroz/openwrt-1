@@ -26,8 +26,12 @@ choice
 
 	config OPENSSL_USE_LIBRESSL_2_7
 		bool "LibreSSL 2.7.x series"
+		select OPENSSL_WITH_CAMELLIA
+		select OPENSSL_WITH_CHACHA_POLY1305
 		select OPENSSL_WITH_EC
 		select OPENSSL_WITH_EC2M
+		select OPENSSL_WITH_IDEA
+		select OPENSSL_WITH_NPN
 		help
 		   LibreSSL support, still in a very early stage.
 endchoice
@@ -72,6 +76,7 @@ config OPENSSL_WITH_SSE2
 	bool
 	default y if !TARGET_x86_legacy && !TARGET_x86_geode
 	prompt "Enable use of x86 SSE2 instructions"
+	depends on OPENSSL_WITH_ASM && i386 && !OPENSSL_USE_LIBRESSL_2_7
 	help
 		Use of SSE2 instructions greatly increase performance (up to
 		3x faster) with a minimum (~0.2%, or 23KB) increase in package
@@ -79,7 +84,6 @@ config OPENSSL_WITH_SSE2
 		support them, such as Geode GX and LX.  In this case you may
 		save 23KB by saying yes here.  AMD Geode NX, and Intel
 		Pentium 4 and above support SSE2.
-	depends on OPENSSL_WITH_ASM && i386
 
 config OPENSSL_NO_DEPRECATED
 	bool
@@ -137,6 +141,7 @@ config OPENSSL_WITH_SRP
 	bool
 	default y
 	prompt "Enable SRP support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		The Secure Remote Password protocol (SRP) is an augmented
 		password-authenticated key agreement (PAKE) protocol, specifically
@@ -146,6 +151,7 @@ config OPENSSL_WITH_CMS
 	bool
 	default y
 	prompt "Enable CMS (RFC 5652) support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		Cryptographic Message Syntax (CMS) is used to digitally sign,
 		digest, authenticate, or encrypt arbitrary message content.
@@ -183,10 +189,10 @@ config OPENSSL_WITH_CHACHA_POLY1305
 
 config OPENSSL_PREFER_CHACHA_OVER_GCM
 	bool
-#	default y if !ARCH_64BIT
+	default y if !ARCH_64BIT
 	default n
 	prompt "Prefer ChaCha20-Poly1305 over AES-GCM by default"
-	depends on OPENSSL_WITH_CHACHA_POLY1305
+	depends on OPENSSL_WITH_CHACHA_POLY1305 && !OPENSSL_USE_LIBRESSL_2_7
 	help
 		The default openssl preference is for AES-GCM before ChaCha, but
 		that takes into account AES-NI capable chips.  It is not the
@@ -198,6 +204,7 @@ config OPENSSL_WITH_PSK
 	bool
 	default y
 	prompt "Enable PSK support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		Build support for Pre-Shared Key based cipher suites.
 
@@ -230,6 +237,7 @@ config OPENSSL_WITH_SEED
 	bool
 	default n
 	prompt "Enable SEED cipher support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		SEED is a block cipher with 128-bit keys broadly used in
 		South Korea, but seldom found elsewhere.
@@ -250,7 +258,7 @@ config OPENSSL_WITH_BLAKE2
 	bool
 	default n
 	prompt "Enable BLAKE2 digest support"
-	depends on !OPENSSL_USE_VERSION_1_0_2
+	depends on !OPENSSL_USE_VERSION_1_0_2 && !OPENSSL_USE_LIBRESSL_2_7
 	help
 		BLAKE2 is a cryptographic hash function based on the ChaCha
 		stream cipher.
@@ -259,6 +267,7 @@ config OPENSSL_WITH_MDC2
 	bool
 	default n
 	prompt "Enable MDC2 digest support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 
 config OPENSSL_WITH_WHIRLPOOL
 	bool
@@ -269,6 +278,7 @@ config OPENSSL_WITH_COMPRESSION
 	bool
 	default n
 	prompt "Enable compression support"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		TLS compression is not recommended, as it is deemed insecure.
 		The CRIME attack exploits this weakness.
@@ -279,6 +289,7 @@ config OPENSSL_WITH_RFC3779
 	bool
 	default n
 	prompt "Enable RFC3779 support (BGP)"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		RFC 3779 defines two X.509 v3 certificate extensions.  The first
 		binds a list of IP address blocks, or prefixes, to the subject of a
@@ -302,6 +313,7 @@ config OPENSSL_ENGINE_CRYPTO
 	bool
 	select OPENSSL_ENGINE
 	prompt "Acceleration support through /dev/crypto"
+	depends on !OPENSSL_USE_LIBRESSL_2_7
 	help
 		This enables use of hardware acceleration through OpenBSD
 		Cryptodev API (/dev/crypto) interface.
@@ -315,17 +327,17 @@ config OPENSSL_WITH_ASYNC
 	bool
 	default n
 	prompt "Enable asynchronous jobs support"
-	depends on OPENSSL_ENGINE && USE_GLIBC
+	depends on OPENSSL_ENGINE && USE_GLIBC && !OPENSSL_USE_LIBRESSL_2_7
 	help
 		Enables async-aware applications to be able to use OpenSSL to
 		initiate crypto operations asynchronously. In order to work
 		this will require the presence of an async capable engine.
 
-config OPENSSL_WITH_GOST
+config OPENSSL_ALLOW_GOST_ENGINE
 	bool
 	default n
 	prompt "Prepare library for GOST engine"
-	depends on OPENSSL_ENGINE
+	depends on OPENSSL_ENGINE && !OPENSSL_USE_LIBRESSL_2_7
 	help
 		This option prepares the library to accept engine support
 		for Russian GOST crypto algorithms.

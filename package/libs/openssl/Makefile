@@ -20,30 +20,23 @@ PKG_BASE:=1.0.2
 PKG_BUGFIX:=p
 PKG_HASH:=50a98e07b1a89eb8f6a99477f262df71c6fa7bef77df4dc83025a2845c827d00
 ENGINES_DIR=engines
-endif
-
-ifdef CONFIG_OPENSSL_USE_VERSION_1_1_0
-PKG_BASE:=1.1.0
-PKG_BUGFIX:=i
-PKG_HASH:=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
-ENGINES_DIR=engines-1.1
-endif
-
-ifdef CONFIG_OPENSSL_USE_VERSION_1_1_1
+else ifdef CONFIG_OPENSSL_USE_VERSION_1_1_1
 PKG_BASE:=1.1.1
 PKG_BUGFIX:=
 PKG_HASH:=2836875a0f89c03d0fdf483941512613a50cfb421d6fd94b9f41d7279d586a3d
 ENGINES_DIR=engines-1.1
-endif
-
-ifdef CONFIG_OPENSSL_USE_LIBRESSL_2_7
+else ifdef CONFIG_OPENSSL_USE_LIBRESSL_2_7
 PKG_BASE:=2.7
 PKG_BUGFIX:=.4
 PKG_HASH:=1e3a9fada06c1c060011470ad0ff960de28f9a0515277d7336f7e09362517da6
-ENGINES_DIR=engines
 PKG_NAME=libressl
 PKG_SOURCE_URL:= \
 	https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/
+else
+PKG_BASE:=1.1.0
+PKG_BUGFIX:=i
+PKG_HASH:=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
+ENGINES_DIR=engines-1.1
 endif
 
 PKG_VERSION:=$(PKG_BASE)$(PKG_BUGFIX)
@@ -58,6 +51,7 @@ PKG_LICENSE:=OpenSSL
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:openssl:openssl
 PKG_CONFIG_DEPENDS:= \
+	CONFIG_OPENSSL_ALLOW_GOST_ENGINE \
 	CONFIG_OPENSSL_ENGINE \
 	CONFIG_OPENSSL_ENGINE_CRYPTO \
 	CONFIG_OPENSSL_ENGINE_DIGEST \
@@ -80,7 +74,6 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_WITH_DTLS \
 	CONFIG_OPENSSL_WITH_EC \
 	CONFIG_OPENSSL_WITH_EC2M \
-	CONFIG_OPENSSL_WITH_GOST \
 	CONFIG_OPENSSL_WITH_IDEA \
 	CONFIG_OPENSSL_WITH_MDC2 \
 	CONFIG_OPENSSL_WITH_NPN \
@@ -160,7 +153,7 @@ define Package/libopenssl-gost
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=Russian GOST algorithms engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_WITH_GOST
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_ALLOW_GOST_ENGINE
 endef
 
 define Package/libopenssl-padlock
@@ -171,6 +164,7 @@ define Package/libopenssl-padlock
 endef
 
 OPENSSL_OPTIONS:= shared no-err
+LIBRESSL_OPTIONS:=
 
 ifdef CONFIG_OPENSSL_USE_VERSION_1_0_2
   OPENSSL_OPTIONS += no-heartbeats no-sha0 no-ssl2-method no-ssl3-method
@@ -207,8 +201,7 @@ endif
 ifdef CONFIG_OPENSSL_USE_VERSION_1_1_1
 # For reproducible builds, set a fixed date to show. It could be
 # `date -r $(PKG_BUILD_DIR)/README %s`, but 1970-01-01 00:00:01 will get
-# the message through. This may not be needed with the final release.
-# Note that 0 won't work!
+# the message through. Note that 0 won't work!
   OPENSSL_MAKEFLAGS += SOURCE_DATE_EPOCH=1
 
   ifndef CONFIG_OPENSSL_WITH_TLS13
@@ -240,6 +233,7 @@ endif
 
 ifndef CONFIG_OPENSSL_WITH_WHIRLPOOL
   OPENSSL_OPTIONS += no-whirlpool
+  LIBRESSL_OPTIONS += -DOPENSSL_NO_WHIRLPOOL
 endif
 
 ifndef CONFIG_OPENSSL_WITH_CMS
@@ -255,12 +249,14 @@ endif
 
 ifdef CONFIG_OPENSSL_NO_DEPRECATED
   OPENSSL_OPTIONS += no-deprecated
+  LIBRESSL_OPTIONS += -DOPENSSL_NO_DEPRECATED
 endif
 
 ifeq ($(CONFIG_OPENSSL_OPTIMIZE_SPEED),y)
   TARGET_CFLAGS := $(filter-out -O%,$(TARGET_CFLAGS)) -O3
 else
   OPENSSL_OPTIONS += -DOPENSSL_SMALL_FOOTPRINT
+  LIBRESSL_OPTIONS += -DOPENSSL_SMALL_FOOTPRINT
 endif
 
 ifdef CONFIG_OPENSSL_ENGINE
@@ -282,12 +278,13 @@ else
   OPENSSL_OPTIONS += no-engine
 endif
 
-ifndef CONFIG_OPENSSL_WITH_GOST
+ifndef CONFIG_OPENSSL_ALLOW_GOST_ENGINE
   OPENSSL_OPTIONS += no-gost
 endif
 
 ifndef CONFIG_OPENSSL_WITH_DTLS
   OPENSSL_OPTIONS += no-dtls
+  LIBRESSL_OPTIONS += -DOPENSSL_NO_DTLS1
 endif
 
 ifdef CONFIG_OPENSSL_WITH_COMPRESSION
@@ -310,6 +307,7 @@ endif
 
 ifndef CONFIG_OPENSSL_WITH_ASM
   OPENSSL_OPTIONS += no-asm
+  CONFIGURE_ARGS += --disable-asm
 endif
 
 ifdef CONFIG_i386
@@ -358,6 +356,10 @@ endef
 
 TARGET_CFLAGS += $(FPIC) -I$(CURDIR)/include -ffunction-sections -fdata-sections
 TARGET_LDFLAGS += -Wl,--gc-sections
+
+ifdef CONFIG_OPENSSL_USE_LIBRESSL_2_7
+  EXTRA_CFLAGS += $(LIBRESSL_OPTIONS)
+endif
 
 define Build/Compile/openssl
 	+$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
