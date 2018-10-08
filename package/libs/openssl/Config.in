@@ -105,6 +105,15 @@ config OPENSSL_WITH_DEPRECATED
 
 		For openssl 1.0.2, squid currently requires this.
 
+config OPENSSL_WITH_ERROR_MESSAGES
+	bool
+	default n
+	prompt "Include error messages"
+
+	help
+		This option aids debugging, but increases package size and
+		memory usage.
+
 comment "Protocol Support"
 
 config OPENSSL_WITH_TLS13
