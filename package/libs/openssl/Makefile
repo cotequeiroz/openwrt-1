@@ -320,7 +320,7 @@ endif
 OPENSSL_TARGET:=linux-$(CONFIG_ARCH)-openwrt
 
 ifeq ($(CONFIG_x86_64)$(CONFIG_mips64)$(CONFIG_mips64el),y)
-  OPENSSL_MAKEFLAGS += LIBDIR=lib
+  OPENSSL_MAKEFLAGS += --libdir=lib
 endif
 
 STAMP_CONFIGURED := $(STAMP_CONFIGURED)_$(shell echo $(OPENSSL_OPTIONS) | mkhash md5)
@@ -335,7 +335,7 @@ define Build/Configure/openssl
 			--prefix=/usr \
 			--openssldir=/etc/ssl \
 			$(TARGET_CPPFLAGS) \
-			$(TARGET_LDFLAGS) $(if $(CONFIG_OPENSSL_USE_VERSION_1_0_2),,-ldl) \
+			$(TARGET_LDFLAGS) \
 			$(OPENSSL_OPTIONS) \
 	)
 	$(if $(CONFIG_OPENSSL_USE_VERSION_1_0_2),
@@ -367,7 +367,7 @@ define Build/Compile/openssl
 		CROSS_COMPILE="$(TARGET_CROSS)" \
 		CC="$(TARGET_CC)" \
 		ASFLAGS="$(TARGET_ASFLAGS) -I$(PKG_BUILD_DIR)/crypto -c" \
-		AR="$(TARGET_CROSS)ar$(if $(CONFIG_OPENSSL_USE_VERSION_1_1_1),, r)" \
+		AR="$(TARGET_CROSS)$(if $(CONFIG_OPENSSL_USE_VERSION_1_1_1),ar,ar r)" \
 		RANLIB="$(TARGET_CROSS)ranlib" \
 		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \
 		$(OPENSSL_MAKEFLAGS) \
