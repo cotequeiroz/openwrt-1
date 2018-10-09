@@ -305,16 +305,12 @@ ifndef CONFIG_OPENSSL_WITH_ASM
 endif
 
 ifdef CONFIG_i386
-  ifndef CONFIG_OPENSSL_SSE2
+  ifndef CONFIG_OPENSSL_WITH_SSE2
     OPENSSL_OPTIONS += no-sse2
   endif
 endif
 
-OPENSSL_TARGET:=linux-$(CONFIG_ARCH)-openwrt
-
-ifeq ($(CONFIG_x86_64)$(CONFIG_mips64)$(CONFIG_mips64el),y)
-  OPENSSL_MAKEFLAGS += LIBDIR=lib
-endif
+OPENSSL_TARGET:=linux-$(call qstrip,$(CONFIG_ARCH))-openwrt
 
 STAMP_CONFIGURED := $(STAMP_CONFIGURED)_$(shell echo $(OPENSSL_OPTIONS) | mkhash md5)
 
@@ -326,9 +322,10 @@ define Build/Configure
 	(cd $(PKG_BUILD_DIR); \
 		./Configure $(OPENSSL_TARGET) \
 			--prefix=/usr \
+			--libdir=lib \
 			--openssldir=/etc/ssl \
 			$(TARGET_CPPFLAGS) \
-			$(TARGET_LDFLAGS) $(if $(CONFIG_OPENSSL_USE_VERSION_1_0_2),,-ldl) \
+			$(TARGET_LDFLAGS) \
 			$(OPENSSL_OPTIONS) \
 	)
 	$(if $(CONFIG_OPENSSL_USE_VERSION_1_0_2),
@@ -349,7 +346,7 @@ define Build/Compile
 		CROSS_COMPILE="$(TARGET_CROSS)" \
 		CC="$(TARGET_CC)" \
 		ASFLAGS="$(TARGET_ASFLAGS) -I$(PKG_BUILD_DIR)/crypto -c" \
-		AR="$(TARGET_CROSS)ar$(if $(CONFIG_OPENSSL_USE_VERSION_1_1_1),, r)" \
+		AR="$(TARGET_CROSS)$(if $(CONFIG_OPENSSL_USE_VERSION_1_1_1),ar,ar r)" \
 		RANLIB="$(TARGET_CROSS)ranlib" \
 		OPENWRT_OPTIMIZATION_FLAGS="$(TARGET_CFLAGS)" \
 		$(OPENSSL_MAKEFLAGS) \
