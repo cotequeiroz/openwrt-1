@@ -43,7 +43,7 @@ config OPENSSL_OPTIMIZE_SPEED
 
 config OPENSSL_WITH_ASM
 	bool
-	default y
+	default y if !SMALL_FLASH || !arm
 	prompt "Compile with optimized assembly code"
 	depends on !arc
 	help
@@ -92,7 +92,7 @@ config OPENSSL_WITH_DEPRECATED
 
 config OPENSSL_WITH_ERROR_MESSAGES
 	bool
-	default n
+	default y if !SMALL_FLASH && !LOW_MEMORY_FOOTPRINT
 	prompt "Include error messages"
 
 	help
@@ -183,8 +183,7 @@ config OPENSSL_WITH_CHACHA_POLY1305
 
 config OPENSSL_PREFER_CHACHA_OVER_GCM
 	bool
-#	default y if !ARCH_64BIT
-	default n
+	default y if !x86_64 && !aarch64
 	prompt "Prefer ChaCha20-Poly1305 over AES-GCM by default"
 	depends on OPENSSL_WITH_CHACHA_POLY1305
 	help
