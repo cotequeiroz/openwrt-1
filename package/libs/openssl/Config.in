@@ -307,7 +307,7 @@ config OPENSSL_ENGINE_CRYPTO
 
 config OPENSSL_ENGINE_DIGEST
 	bool
-	depends on OPENSSL_ENGINE_CRYPTO
+	depends on OPENSSL_ENGINE_CRYPTO && !OPENSSL_USE_VERSION_1_1_1
 	prompt "/dev/crypto digest (md5/sha1) acceleration support"
 
 config OPENSSL_WITH_ASYNC
