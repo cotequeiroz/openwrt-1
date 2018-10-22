@@ -303,6 +303,10 @@ config OPENSSL_ENGINE_CRYPTO
 	help
 		This enables use of hardware acceleration through OpenBSD
 		Cryptodev API (/dev/crypto) interface.
+		You must install kmod-cryptodev from the packages feed 
+		(under Kernel modules, Cryptographic API modules) for
+		/dev/crypto to show up and use hardware acceleration; otherwise 
+		it falls back to software.
 
 config OPENSSL_ENGINE_DIGEST
 	bool
