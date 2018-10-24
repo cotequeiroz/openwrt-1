@@ -307,8 +307,12 @@ config OPENSSL_ENGINE_CRYPTO
 		it falls back to software.
 
 config OPENSSL_ENGINE_DIGEST
+# The /dev/crypto engine was changed between openssl 1.1.0 and 1.1.1.
+# Normally, digest support is always on for 1.1.1, but it is currently
+# not working correctly, so a patch was added to conditionally disable
+# digests.  This option is marked as BROKEN until this is fixed.
 	bool
-	depends on OPENSSL_ENGINE_CRYPTO && !OPENSSL_USE_VERSION_1_1_1
+	depends on OPENSSL_ENGINE_CRYPTO && (!OPENSSL_USE_VERSION_1_1_1 || BROKEN)
 	prompt "/dev/crypto digest acceleration support"
 	help
 		Digests are computed fairily fast in software, and
