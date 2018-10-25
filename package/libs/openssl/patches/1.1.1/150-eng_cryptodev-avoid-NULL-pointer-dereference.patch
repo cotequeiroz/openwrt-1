@@ -1,0 +1,65 @@
+From 81fcb69919c9e815dc2e6e1ede845ce8e195c729 Mon Sep 17 00:00:00 2001
+From: Eneas U de Queiroz <cote2004-github@yahoo.com>
+Date: Wed, 24 Oct 2018 22:23:31 -0300
+Subject: [PATCH] eng_cryptodev: avoid NULL pointer dereference
+
+Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
+
+diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
+index 51105ec60d..55d2aed9be 100644
+--- a/crypto/engine/eng_devcrypto.c
++++ b/crypto/engine/eng_devcrypto.c
+@@ -69,7 +69,7 @@ static const struct cipher_data_st {
+     { NID_aes_192_cbc, 16, 192 / 8, 16, EVP_CIPH_CBC_MODE, CRYPTO_AES_CBC },
+     { NID_aes_256_cbc, 16, 256 / 8, 16, EVP_CIPH_CBC_MODE, CRYPTO_AES_CBC },
+ #ifndef OPENSSL_NO_RC4
+-    { NID_rc4, 1, 16, 0, EVP_CIPH_STREAM_CIPHER, CRYPTO_ARC4 },
++    { NID_rc4, 1, 16, 0, CRYPTO_ARC4 },
+ #endif
+ #if !defined(CHECK_BSD_STYLE_MACROS) || defined(CRYPTO_AES_CTR)
+     { NID_aes_128_ctr, 16, 128 / 8, 16, EVP_CIPH_CTR_MODE, CRYPTO_AES_CTR },
+@@ -212,7 +212,7 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)
+     struct cipher_ctx *cipher_ctx =
+         (struct cipher_ctx *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+ 
+-    if (ioctl(cipher_ctx->cfd, CIOCFSESSION, &cipher_ctx->sess.ses) < 0) {
++    if (ioctl(cipher_ctx->cfd, CIOCFSESSION, &cipher_ctx->sess) < 0) {
+         SYSerr(SYS_F_IOCTL, errno);
+         return 0;
+     }
+@@ -255,7 +255,7 @@ static void prepare_cipher_methods()
+         sess.cipher = cipher_data[i].devcryptoid;
+         sess.keylen = cipher_data[i].keylen;
+         if (ioctl(cfd, CIOCGSESSION, &sess) < 0
+-            || ioctl(cfd, CIOCFSESSION, &sess.ses) < 0)
++            || ioctl(cfd, CIOCFSESSION, &sess) < 0)
+             continue;
+ 
+         if ((known_cipher_methods[i] =
+@@ -472,7 +472,7 @@ static int digest_final(EVP_MD_CTX *ctx, unsigned char *md)
+         SYSerr(SYS_F_IOCTL, errno);
+         return 0;
+     }
+-    if (ioctl(digest_ctx->cfd, CIOCFSESSION, &digest_ctx->sess.ses) < 0) {
++    if (ioctl(digest_ctx->cfd, CIOCFSESSION, &digest_ctx->sess) < 0) {
+         SYSerr(SYS_F_IOCTL, errno);
+         return 0;
+     }
+@@ -485,7 +485,7 @@ static int digest_cleanup(EVP_MD_CTX *ctx)
+     struct digest_ctx *digest_ctx =
+         (struct digest_ctx *)EVP_MD_CTX_md_data(ctx);
+ 
+-    if (close(digest_ctx->cfd) < 0) {
++    if (!digest_ctx || close(digest_ctx->cfd) < 0) {
+         SYSerr(SYS_F_CLOSE, errno);
+         return 0;
+     }
+@@ -522,7 +522,7 @@ static void prepare_digest_methods()
+          */
+         sess.mac = digest_data[i].devcryptoid;
+         if (ioctl(cfd, CIOCGSESSION, &sess) < 0
+-            || ioctl(cfd, CIOCFSESSION, &sess.ses) < 0)
++            || ioctl(cfd, CIOCFSESSION, &sess) < 0)
+             continue;
+ 
+         if ((known_digest_methods[i] = EVP_MD_meth_new(digest_data[i].nid,
