@@ -330,9 +330,13 @@ config OPENSSL_ENGINE_CRYPTO
 		Cryptodev API (/dev/crypto) interface.
 
 config OPENSSL_ENGINE_DIGEST
+# The /dev/crypto engine was changed between openssl 1.1.0 and 1.1.1.
+# Normally, digest support is always on for 1.1.1, but it is currently
+# not working correctly, so a patch was added to conditionally disable
+# digests.  This flag use is marked as BROKEN until this is fixed.
 	bool
-	depends on OPENSSL_ENGINE_CRYPTO
-	prompt "/dev/crypto digest (md5/sha1) acceleration support"
+	depends on OPENSSL_ENGINE_CRYPTO && (!OPENSSL_USE_VERSION_1_1_1 || BROKEN)
+	prompt "/dev/crypto digest acceleration support"
 
 config OPENSSL_WITH_ASYNC
 	bool
