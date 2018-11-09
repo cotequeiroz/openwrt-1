@@ -1,0 +1,48 @@
+From 16ffab01f9478ac5dc9fdddb281042fa33d903ef Mon Sep 17 00:00:00 2001
+From: Jung-uk Kim <jkim@FreeBSD.org>
+Date: Thu, 13 Dec 2018 18:18:16 -0500
+Subject: [PATCH] Do not complain when /dev/crypto does not exist.
+
+FreeBSD does not enable cryptodev(4) by default.  OpenBSD disabled support
+for /dev/crypto by default from 4.9 and removed it from 5.7.  Now the engine
+is properly enabled by default on BSD platforms (see #7885), it continuously
+complains:
+
+Could not open /dev/crypto: No such file or directory
+
+Hide the nagging error message behind ENGINE_DEVCRYPTO_DEBUG.
+
+CLA: trivial
+
+Reviewed-by: Richard Levitte <levitte@openssl.org>
+Reviewed-by: Paul Dale <paul.dale@oracle.com>
+Reviewed-by: Matthias St. Pierre <Matthias.St.Pierre@ncp-e.com>
+(Merged from https://github.com/openssl/openssl/pull/7896)
+
+(cherry picked from commit c79a022da973140c141eeebff9170ca5702be0f9)
+
+diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
+index 65f1720a0c..fe2244709f 100644
+--- a/crypto/engine/eng_devcrypto.c
++++ b/crypto/engine/eng_devcrypto.c
+@@ -24,6 +24,8 @@
+ 
+ #include "internal/engine.h"
+ 
++/* #define ENGINE_DEVCRYPTO_DEBUG */
++
+ #ifdef CRYPTO_ALGORITHM_MIN
+ # define CHECK_BSD_STYLE_MACROS
+ #endif
+@@ -736,7 +738,10 @@ void engine_load_devcrypto_int()
+     ENGINE *e = NULL;
+ 
+     if ((cfd = open("/dev/crypto", O_RDWR, 0)) < 0) {
+-        fprintf(stderr, "Could not open /dev/crypto: %s\n", strerror(errno));
++#ifndef ENGINE_DEVCRYPTO_DEBUG
++        if (errno != ENOENT)
++#endif
++            fprintf(stderr, "Could not open /dev/crypto: %s\n", strerror(errno));
+         return;
+     }
+ 
