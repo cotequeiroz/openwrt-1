@@ -1,0 +1,41 @@
+From cd01707b7f7e71b6c5df013212c9b3613e9eab7c Mon Sep 17 00:00:00 2001
+From: Richard Levitte <levitte@openssl.org>
+Date: Fri, 2 Nov 2018 10:24:24 +0100
+Subject: [PATCH 6/6] crypto/engine/eng_devcrypto.c: ensure we don't leak
+ resources
+
+If engine building fails for some reason, we must make sure to close
+the /dev/crypto handle.
+
+Reviewed-by: Bernd Edlinger <bernd.edlinger@hotmail.de>
+(Merged from https://github.com/openssl/openssl/pull/7506)
+
+(cherry picked from commit 681e8cacdbdc44ac00af29b6656fc52745a9baa2)
+
+diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
+index a15dc95a6e..4a0ba09a38 100644
+--- a/crypto/engine/eng_devcrypto.c
++++ b/crypto/engine/eng_devcrypto.c
+@@ -624,12 +624,20 @@ void engine_load_devcrypto_int()
+     prepare_digest_methods();
+ #endif
+ 
+-    if ((e = ENGINE_new()) == NULL)
++    if ((e = ENGINE_new()) == NULL
++        || !ENGINE_set_destroy_function(e, devcrypto_unload)) {
++        ENGINE_free(e);
++        /*
++         * We know that devcrypto_unload() won't be called when one of the
++         * above two calls have failed, so we close cfd explicitly here to
++         * avoid leaking resources.
++         */
++        close(cfd);
+         return;
++    }
+ 
+     if (!ENGINE_set_id(e, "devcrypto")
+         || !ENGINE_set_name(e, "/dev/crypto engine")
+-        || !ENGINE_set_destroy_function(e, devcrypto_unload)
+ 
+ /*
+  * Asymmetric ciphers aren't well supported with /dev/crypto.  Among the BSD
