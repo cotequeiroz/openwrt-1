@@ -335,7 +335,7 @@ config OPENSSL_ENGINE_DIGEST
 # not working correctly, so a patch was added to conditionally disable
 # digests.  This flag use is marked as BROKEN until this is fixed.
 	bool
-	depends on OPENSSL_ENGINE_CRYPTO && (!OPENSSL_USE_VERSION_1_1_1 || BROKEN)
+	depends on OPENSSL_ENGINE_CRYPTO && !OPENSSL_USE_VERSION_1_1_1
 	prompt "/dev/crypto digest acceleration support"
 
 config OPENSSL_WITH_ASYNC
