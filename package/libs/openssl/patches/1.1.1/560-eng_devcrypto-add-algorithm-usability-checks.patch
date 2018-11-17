@@ -1,0 +1,144 @@
+From 50fc356fe80a04d7634fb8871098df2fc1dea075 Mon Sep 17 00:00:00 2001
+From: Eneas U de Queiroz <cote2004-github@yahoo.com>
+Date: Sat, 3 Nov 2018 15:41:10 -0300
+Subject: [PATCH 7/9] eng_devcrypto: add algorithm usability checks
+
+Make sure each algorithm is not implemented in software, and that
+digests can handle copying of partial digest state before we decide to
+use them.
+
+Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
+
+diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
+index 85765c82d0..ea102c3741 100644
+--- a/crypto/engine/eng_devcrypto.c
++++ b/crypto/engine/eng_devcrypto.c
+@@ -236,6 +236,34 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)
+     return 1;
+ }
+ 
++static int devcrypto_test_cipher(size_t cipher_data_index)
++{
++    struct session_op sess;
++#ifdef CIOCGSESSINFO
++    struct session_info_op siop;
++#endif
++    int ret=0;
++
++    memset(&sess, 0, sizeof(sess));
++    sess.key = (void *)"01234567890123456789012345678901234567890123456789";
++    sess.cipher = cipher_data[cipher_data_index].devcryptoid;
++    sess.keylen = cipher_data[cipher_data_index].keylen;
++    if (ioctl(cfd, CIOCGSESSION, &sess) < 0)
++        return 0;
++#ifdef CIOCGSESSINFO
++    siop.ses = sess.ses;
++    /* Don't use software (non-accelerated) drivers,
++     * but only if we can get that info */
++    if (ioctl(cfd, CIOCGSESSINFO, &siop) < 0
++        || (siop.flags & SIOP_FLAG_KERNEL_DRIVER_ONLY))
++        ret = 1;
++#else
++    ret = 1;
++#endif
++    ioctl(cfd, CIOCFSESSION, &sess.ses);
++    return ret;
++}
++
+ /*
+  * Keep a table of known nids and associated methods.
+  * Note that known_cipher_nids[] isn't necessarily indexed the same way as
+@@ -257,13 +285,9 @@ static void prepare_cipher_methods(void)
+          i < OSSL_NELEM(cipher_data); i++) {
+ 
+         /*
+-         * Check that the algo is really availably by trying to open and close
+-         * a session.
++         * Check that the algo is usable
+          */
+-        sess.cipher = cipher_data[i].devcryptoid;
+-        sess.keylen = cipher_data[i].keylen;
+-        if (ioctl(cfd, CIOCGSESSION, &sess) < 0
+-            || ioctl(cfd, CIOCFSESSION, &sess.ses) < 0)
++        if (!devcrypto_test_cipher(i))
+             continue;
+ 
+         if ((known_cipher_methods[i] =
+@@ -412,8 +436,8 @@ static const struct digest_data_st *get_digest_data(int nid)
+ }
+ 
+ /*
+- * Following are the four necessary functions to map OpenSSL functionality
+- * with cryptodev.
++ * Following are the five necessary functions to map OpenSSL functionality
++ * with cryptodev: init, update, final, cleanup, and copy.
+  */
+ 
+ static int digest_init(EVP_MD_CTX *ctx)
+@@ -529,6 +553,43 @@ static int digest_cleanup(EVP_MD_CTX *ctx)
+     return 1;
+ }
+ 
++static int devcrypto_test_digest(size_t digest_data_index)
++{
++    struct session_op sess1, sess2;
++#ifdef CIOCGSESSINFO
++    struct session_info_op siop;
++#endif
++    struct cphash_op cphash;
++    int ret=0;
++
++    memset(&sess1, 0, sizeof(sess1));
++    memset(&sess2, 0, sizeof(sess2));
++    sess1.mac = digest_data[digest_data_index].devcryptoid;
++    if (ioctl(cfd, CIOCGSESSION, &sess1) < 0)
++        return 0;
++#ifdef CIOCGSESSINFO
++    siop.ses = sess1.ses;
++    /* Don't use software (non-accelerated) drivers,
++     * but only if we can get that info */
++    if (ioctl(cfd, CIOCGSESSINFO, &siop) >= 0
++        && !(siop.flags & SIOP_FLAG_KERNEL_DRIVER_ONLY))
++        goto finish;
++#endif
++    /* Make sure the driver is capable of hash state copy */
++    sess2.mac = sess1.mac;
++    if (ioctl(cfd, CIOCGSESSION, &sess2) < 0)
++        goto finish;
++    cphash.src_ses = sess1.ses;
++    cphash.dst_ses = sess2.ses;
++    if (ioctl(cfd, CIOCCPHASH, &cphash) >= 0)
++        ret = 1;
++finish:
++    ioctl(cfd, CIOCFSESSION, &sess1.ses);
++    if (sess2.ses == 0)
++        ioctl(cfd, CIOCFSESSION, &sess2.ses);
++    return ret;
++}
++
+ /*
+  * Keep a table of known nids and associated methods.
+  * Note that known_digest_nids[] isn't necessarily indexed the same way as
+@@ -541,20 +602,14 @@ static EVP_MD *known_digest_methods[OSSL_NELEM(digest_data)] = { NULL, };
+ static void prepare_digest_methods(void)
+ {
+     size_t i;
+-    struct session_op sess;
+-
+-    memset(&sess, 0, sizeof(sess));
+ 
+     for (i = 0, known_digest_nids_amount = 0; i < OSSL_NELEM(digest_data);
+          i++) {
+ 
+         /*
+-         * Check that the algo is really availably by trying to open and close
+-         * a session.
++         * Check that the algo is usable
+          */
+-        sess.mac = digest_data[i].devcryptoid;
+-        if (ioctl(cfd, CIOCGSESSION, &sess) < 0
+-            || ioctl(cfd, CIOCFSESSION, &sess.ses) < 0)
++        if (!devcrypto_test_digest(i))
+             continue;
+ 
+         if ((known_digest_methods[i] = EVP_MD_meth_new(digest_data[i].nid,
