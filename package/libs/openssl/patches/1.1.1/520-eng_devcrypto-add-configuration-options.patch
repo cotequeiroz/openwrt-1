@@ -1,7 +1,7 @@
-From 5e1dd76893b9841bd7735d2c639088656a2a463f Mon Sep 17 00:00:00 2001
+From 5b526f7c3e6c0efab471a76b4879fd876b8c5218 Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Mon, 5 Nov 2018 14:02:08 -0200
-Subject: [PATCH 8/9] eng_devcrypto: add configuration options
+Subject: [PATCH 3/4] eng_devcrypto: add configuration options
 
 USE_SOFTDRIVERS: whether to use software (not accelerated) drivers
 CIPHERS: list of ciphers to enable
@@ -10,7 +10,7 @@ DIGESTS: list of digests to enable
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index ea102c3741..9de30c823b 100644
+index f8e792d084..a49c8b85c3 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
 @@ -16,6 +16,7 @@
@@ -377,7 +377,7 @@ index ea102c3741..9de30c823b 100644
 +            digest_driver_info[i].status = DEVCRYPTO_STATUS_UNUSABLE;
 +            goto finish;
 +        }
-+
+ 
 +#ifdef CIOCGSESSINFO
 +        /* gather hardware acceleration info from the driver */
 +        siop.ses = sess1.ses;
@@ -388,7 +388,7 @@ index ea102c3741..9de30c823b 100644
 +        else
 +            digest_driver_info[i].accelerated = DEVCRYPTO_NOT_ACCELERATED;
 +#endif
- 
++
 +        /* digest must be capable of hash state copy */
 +        sess2.mac = sess1.mac;
 +        if (ioctl(cfd, CIOCGSESSION, &sess2) < 0) {
@@ -425,7 +425,7 @@ index ea102c3741..9de30c823b 100644
      }
  }
  
-@@ -673,7 +804,140 @@ static int devcrypto_digests(ENGINE *e, const EVP_MD **digest,
+@@ -673,8 +804,145 @@ static int devcrypto_digests(ENGINE *e, const EVP_MD **digest,
      return *digest != NULL;
  }
  
@@ -459,8 +459,8 @@ index ea102c3741..9de30c823b 100644
 +    return 1;
 +}
 +
-+#endif
-+
+ #endif
+ 
 +/******************************************************************************
 + *
 + * CONTROL COMMANDS
@@ -473,12 +473,14 @@ index ea102c3741..9de30c823b 100644
 +#define DEVCRYPTO_CMD_DUMP_INFO (ENGINE_CMD_BASE + 3)
 +
 +static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
++#ifdef CIOCGSESSINFO
 +   {DEVCRYPTO_CMD_USE_SOFTDRIVERS,
 +    "USE_SOFTDRIVERS",
 +    "specifies whether to use software (not accelerated) drivers (" STR(DEVCRYPTO_REQUIRE_ACCELERATED)
 +        "=use only accelerated drivers, " STR(DEVCRYPTO_USE_SOFTWARE) "=allow all drivers, "
 +        STR(DEVCRYPTO_REJECT_SOFTWARE) "=use if acceleration can't be determined [default=2])",
 +    ENGINE_CMD_FLAG_NUMERIC},
++#endif
 +
 +   {DEVCRYPTO_CMD_CIPHERS,
 +    "CIPHERS",
@@ -499,6 +501,7 @@ index ea102c3741..9de30c823b 100644
 +{
 +    int *new_list;
 +    switch(cmd) {
++#ifdef CIOCGSESSINFO
 +    case DEVCRYPTO_CMD_USE_SOFTDRIVERS:
 +        switch(i) {
 +        case DEVCRYPTO_REQUIRE_ACCELERATED:
@@ -514,9 +517,10 @@ index ea102c3741..9de30c823b 100644
 +        use_softdrivers = i;
 +#ifdef IMPLEMENT_DIGEST
 +        rebuild_known_digest_nids();
- #endif
++#endif
 +        rebuild_known_cipher_nids();
 +        return 1;
++#endif /* CIOCGSESSINFO */
 +
 +    case DEVCRYPTO_CMD_CIPHERS:
 +        if (p == NULL)
@@ -563,10 +567,11 @@ index ea102c3741..9de30c823b 100644
 +    }
 +    return 0;
 +}
- 
++
  /******************************************************************************
   *
-@@ -724,6 +988,8 @@ void engine_load_devcrypto_int()
+  * LOAD / UNLOAD
+@@ -724,6 +992,8 @@ void engine_load_devcrypto_int()
  
      if (!ENGINE_set_id(e, "devcrypto")
          || !ENGINE_set_name(e, "/dev/crypto engine")

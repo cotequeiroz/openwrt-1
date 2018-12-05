@@ -17,13 +17,13 @@ PKG_SOURCE_URL:= \
 
 ifdef CONFIG_OPENSSL_USE_VERSION_1_0_2
 PKG_BASE:=1.0.2
-PKG_BUGFIX:=p
-PKG_HASH:=50a98e07b1a89eb8f6a99477f262df71c6fa7bef77df4dc83025a2845c827d00
+PKG_BUGFIX:=q
+PKG_HASH:=5744cfcbcec2b1b48629f7354203bc1e5e9b5466998bbccc5b5fcde3b18eb684
 ENGINES_DIR=engines
 else ifdef CONFIG_OPENSSL_USE_VERSION_1_1_0
 PKG_BASE:=1.1.0
-PKG_BUGFIX:=i
-PKG_HASH:=ebbfc844a8c8cc0ea5dc10b86c9ce97f401837f3fa08c17b2cdadc118253cf99
+PKG_BUGFIX:=j
+PKG_HASH:=31bec6c203ce1a8e93d5994f4ed304c63ccf07676118b6634edded12ad1b3246
 ENGINES_DIR=engines-1.1
 else ifdef CONFIG_OPENSSL_USE_LIBRESSL_2_7
 PKG_BASE:=2.7
@@ -34,8 +34,8 @@ PKG_SOURCE_URL:= \
 	https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/
 else
 PKG_BASE:=1.1.1
-PKG_BUGFIX:=
-PKG_HASH:=2836875a0f89c03d0fdf483941512613a50cfb421d6fd94b9f41d7279d586a3d
+PKG_BUGFIX:=a
+PKG_HASH:=fc20130f8b7cbd2fb918b2f14e2f429e109c31ddd0fb38fc5d71d9ffed3f9f41
 ENGINES_DIR=engines-1.1
 endif
 
@@ -51,9 +51,9 @@ PKG_LICENSE:=OpenSSL
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:openssl:openssl
 PKG_CONFIG_DEPENDS:= \
-	CONFIG_OPENSSL_ALLOW_GOST_ENGINE \
 	CONFIG_OPENSSL_ENGINE \
 	CONFIG_OPENSSL_ENGINE_CRYPTO \
+	CONFIG_OPENSSL_NO_DEPRECATED \
 	CONFIG_OPENSSL_ENGINE_DIGEST \
 	CONFIG_OPENSSL_OPTIMIZE_SPEED \
 	CONFIG_OPENSSL_PREFER_CHACHA_OVER_GCM \
@@ -69,11 +69,11 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_WITH_CHACHA_POLY1305 \
 	CONFIG_OPENSSL_WITH_CMS \
 	CONFIG_OPENSSL_WITH_COMPRESSION \
-	CONFIG_OPENSSL_NO_DEPRECATED \
 	CONFIG_OPENSSL_WITH_DTLS \
 	CONFIG_OPENSSL_WITH_EC \
 	CONFIG_OPENSSL_WITH_EC2M \
 	CONFIG_OPENSSL_WITH_ERROR_MESSAGES \
+	CONFIG_OPENSSL_WITH_GOST \
 	CONFIG_OPENSSL_WITH_IDEA \
 	CONFIG_OPENSSL_WITH_MDC2 \
 	CONFIG_OPENSSL_WITH_NPN \
@@ -142,6 +142,20 @@ $(call Package/openssl/Default/description)
 This package contains the OpenSSL command-line utility.
 endef
 
+define Package/libopenssl-gost
+  $(call Package/openssl/Default)
+  SUBMENU:=SSL
+  TITLE:=Russian GOST algorithms engine
+  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_WITH_GOST
+endef
+
+define Package/libopenssl-gost/description
+This package adds an egine that enables Russian GOST algorithms.
+To use it, you need to configure it in /etc/ssl/openssl.cnf.
+See https://www.openssl.org/docs/man1.0.2/apps/config.html#ENGINE-CONFIGURATION-MODULE
+The engine_id is "gost"
+endef
+
 define Package/libopenssl-afalg
   $(call Package/openssl/Default)
   SUBMENU:=SSL
@@ -150,11 +164,12 @@ define Package/libopenssl-afalg
 	   @!LINUX_3_18 +kmod-crypto-user
 endef
 
-define Package/libopenssl-gost
-  $(call Package/openssl/Default)
-  SUBMENU:=SSL
-  TITLE:=Russian GOST algorithms engine
-  DEPENDS:=libopenssl @OPENSSL_ENGINE @OPENSSL_USE_VERSION_1_0_2 +@OPENSSL_ALLOW_GOST_ENGINE
+define Package/libopenssl-afalg/description
+This package adds an egine that enables hardware acceleration
+through the AF_ALG kernel interface.
+To use it, you need to configure the engine in /etc/ssl/openssl.cnf
+See https://www.openssl.org/docs/man1.1.1/man5/config.html#Engine-Configuration-Module
+The engine_id is "afalg"
 endef
 
 define Package/libopenssl-padlock
@@ -162,6 +177,13 @@ define Package/libopenssl-padlock
   SUBMENU:=SSL
   TITLE:=VIA Padlock hardware acceleration engine
   DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86 +kmod-crypto-hw-padlock
+endef
+
+define Package/libopenssl-padlock/description
+This package adds an egine that enables VIA Padlock hardware acceleration.
+To use it, you need to configure it in /etc/ssl/openssl.cnf.
+See https://www.openssl.org/docs/man1.1.1/man5/config.html#Engine-Configuration-Module
+The engine_id is "padlock"
 endef
 
 OPENSSL_OPTIONS:= shared
@@ -287,7 +309,7 @@ else
   OPENSSL_OPTIONS += no-engine
 endif
 
-ifndef CONFIG_OPENSSL_ALLOW_GOST_ENGINE
+ifndef CONFIG_OPENSSL_WITH_GOST
   OPENSSL_OPTIONS += no-gost
 endif
 
@@ -320,16 +342,12 @@ ifndef CONFIG_OPENSSL_WITH_ASM
 endif
 
 ifdef CONFIG_i386
-  ifndef CONFIG_OPENSSL_SSE2
+  ifndef CONFIG_OPENSSL_WITH_SSE2
     OPENSSL_OPTIONS += no-sse2
   endif
 endif
 
-OPENSSL_TARGET:=linux-$(CONFIG_ARCH)-openwrt
-
-ifeq ($(CONFIG_x86_64)$(CONFIG_mips64)$(CONFIG_mips64el),y)
-  OPENSSL_MAKEFLAGS += --libdir=lib
-endif
+OPENSSL_TARGET:=linux-$(call qstrip,$(CONFIG_ARCH))-openwrt
 
 STAMP_CONFIGURED := $(STAMP_CONFIGURED)_$(shell echo $(OPENSSL_OPTIONS) | mkhash md5)
 
@@ -341,6 +359,7 @@ define Build/Configure/openssl
 	(cd $(PKG_BUILD_DIR); \
 		./Configure $(OPENSSL_TARGET) \
 			--prefix=/usr \
+			--libdir=lib \
 			--openssldir=/etc/ssl \
 			$(TARGET_CPPFLAGS) \
 			$(TARGET_LDFLAGS) \
@@ -448,7 +467,6 @@ define Package/libopenssl/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(call Package/libopenssl/install/$(PKG_NAME),$(1))
 endef
-
 
 define Package/openssl-util/install
 	$(INSTALL_DIR) $(1)/usr/bin

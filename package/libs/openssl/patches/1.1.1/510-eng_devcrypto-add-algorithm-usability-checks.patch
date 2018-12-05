@@ -1,7 +1,7 @@
-From 50fc356fe80a04d7634fb8871098df2fc1dea075 Mon Sep 17 00:00:00 2001
+From cf809386b64483a288da0086930e886cee0f3949 Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Sat, 3 Nov 2018 15:41:10 -0300
-Subject: [PATCH 7/9] eng_devcrypto: add algorithm usability checks
+Subject: [PATCH 2/4] eng_devcrypto: add algorithm usability checks
 
 Make sure each algorithm is not implemented in software, and that
 digests can handle copying of partial digest state before we decide to
@@ -10,7 +10,7 @@ use them.
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index 85765c82d0..ea102c3741 100644
+index 6561ed16bd..f8e792d084 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
 @@ -236,6 +236,34 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)

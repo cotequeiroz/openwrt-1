@@ -54,7 +54,7 @@ config OPENSSL_OPTIMIZE_SPEED
 
 config OPENSSL_WITH_ASM
 	bool
-	default y
+	default y if !SMALL_FLASH || !arm
 	prompt "Compile with optimized assembly code"
 	depends on !arc
 	help
@@ -87,10 +87,6 @@ config OPENSSL_WITH_SSE2
 		save 23KB by saying yes here.  AMD Geode NX, and Intel
 		Pentium 4 and above support SSE2.
 
-config OPENSSL_NO_DEPRECATED
-	bool
-	default !OPENSSL_WITH_DEPRECATED
-
 config OPENSSL_WITH_DEPRECATED
 	bool
 	default y
@@ -105,11 +101,14 @@ config OPENSSL_WITH_DEPRECATED
 
 		For openssl 1.0.2, squid currently requires this.
 
+config OPENSSL_NO_DEPRECATED
+	bool
+	default !OPENSSL_WITH_DEPRECATED
+
 config OPENSSL_WITH_ERROR_MESSAGES
 	bool
-	default n
+	default y if !SMALL_FLASH && !LOW_MEMORY_FOOTPRINT
 	prompt "Include error messages"
-
 	help
 		This option aids debugging, but increases package size and
 		memory usage.
@@ -200,7 +199,7 @@ config OPENSSL_WITH_CHACHA_POLY1305
 
 config OPENSSL_PREFER_CHACHA_OVER_GCM
 	bool
-	default y if !ARCH_64BIT
+	default y if !x86_64 && !aarch64
 	default n
 	prompt "Prefer ChaCha20-Poly1305 over AES-GCM by default"
 	depends on OPENSSL_WITH_CHACHA_POLY1305 && !OPENSSL_USE_LIBRESSL_2_7
@@ -328,15 +327,23 @@ config OPENSSL_ENGINE_CRYPTO
 	help
 		This enables use of hardware acceleration through OpenBSD
 		Cryptodev API (/dev/crypto) interface.
+		You must install kmod-cryptodev from the packages feed
+		(under Kernel modules, Cryptographic API modules) for
+		/dev/crypto to show up and use hardware acceleration; otherwise
+		it falls back to software.
 
 config OPENSSL_ENGINE_DIGEST
-# The /dev/crypto engine was changed between openssl 1.1.0 and 1.1.1.
-# Normally, digest support is always on for 1.1.1, but it is currently
-# not working correctly, so a patch was added to conditionally disable
-# digests.  This flag use is marked as BROKEN until this is fixed.
 	bool
 	depends on OPENSSL_ENGINE_CRYPTO && !OPENSSL_USE_VERSION_1_1_1
 	prompt "/dev/crypto digest acceleration support"
+	help
+	        Digests are computed fairily fast in software, and
+		the many context switches needed to use /dev/crypto
+		may actually slow it down.  So enable this if you have
+		a fast hardware crypto, and a slow or loaded CPU.
+		Beware that the whole message needs to fit in RAM before
+		the digest is calculated.  For TLS, it's fine. Don't try
+		to run: openssl dgst <large-file>
 
 config OPENSSL_WITH_ASYNC
 	bool
@@ -348,7 +355,7 @@ config OPENSSL_WITH_ASYNC
 		initiate crypto operations asynchronously. In order to work
 		this will require the presence of an async capable engine.
 
-config OPENSSL_ALLOW_GOST_ENGINE
+config OPENSSL_WITH_GOST
 	bool
 	default n
 	prompt "Prepare library for GOST engine"
