@@ -1,7 +1,7 @@
-From 6b3c42d7249174efbb14784b458f43d26cf1fe1d Mon Sep 17 00:00:00 2001
+From e1efafaf9d305ee649adde9ef9bdc86d55b82a08 Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Mon, 5 Nov 2018 15:59:44 -0200
-Subject: [PATCH 4/9] eng_devcrypto: close session on cleanup, not final
+Subject: [PATCH 4/5] eng_devcrypto: close session on cleanup, not final
 
 Close the session in digest_cleanup instead of digest_final.  A failure
 in closing the session does not mean a previous successful digest final

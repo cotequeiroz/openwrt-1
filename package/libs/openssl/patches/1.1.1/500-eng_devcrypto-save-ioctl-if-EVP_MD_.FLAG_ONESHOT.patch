@@ -1,7 +1,7 @@
-From fe3c6c99d73675f9c56e51c8f311eb3cfd345df9 Mon Sep 17 00:00:00 2001
+From e9d4082820429af4a418c47630c816afdd52e6ee Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Mon, 5 Nov 2018 15:54:17 -0200
-Subject: [PATCH 6/9] eng_devcrypto: save ioctl if EVP_MD_..FLAG_ONESHOT
+Subject: [PATCH 1/4] eng_devcrypto: save ioctl if EVP_MD_..FLAG_ONESHOT
 
 Since each ioctl causes a context switch, slowing things down, if
 EVP_MD_CTX_FLAG_ONESHOT is set, then:
@@ -11,7 +11,7 @@ EVP_MD_CTX_FLAG_ONESHOT is set, then:
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index 756e7d857f..85765c82d0 100644
+index c882592554..6561ed16bd 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
 @@ -358,6 +358,7 @@ struct digest_ctx {

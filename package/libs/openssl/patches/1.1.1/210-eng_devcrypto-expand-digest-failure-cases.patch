@@ -1,7 +1,7 @@
-From d72ee872af58fa0a853d850dfe811d90ff7d9662 Mon Sep 17 00:00:00 2001
+From c09863cedee100d2b9cff3b00c941c6a5f486f5e Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Wed, 14 Nov 2018 11:22:14 -0200
-Subject: [PATCH 2/9] eng_devcrypto: expand digest failure cases
+Subject: [PATCH 2/5] eng_devcrypto: expand digest failure cases
 
 Return failure when the digest_ctx is null in digest_update and
 digest_final, and when md is null in digest_final.

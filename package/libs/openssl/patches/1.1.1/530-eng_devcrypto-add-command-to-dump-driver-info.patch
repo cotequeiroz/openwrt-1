@@ -1,14 +1,14 @@
-From fd1dff18076454761362ef617f1ea581a1c9116e Mon Sep 17 00:00:00 2001
+From 20fc64a791c43c210f792ef7a661dc5b423a28cf Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Tue, 6 Nov 2018 22:54:07 -0200
-Subject: [PATCH 9/9] eng_devcrypto: add command to dump driver info
+Subject: [PATCH 4/4] eng_devcrypto: add command to dump driver info
 
 This is useful to determine the kernel driver running each algorithm.
 
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index 9de30c823b..80ebfffdb7 100644
+index a49c8b85c3..5e85640a70 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
 @@ -50,16 +50,20 @@ static int use_softdrivers = DEVCRYPTO_REJECT_SOFTWARE;
@@ -243,7 +243,7 @@ index 9de30c823b..80ebfffdb7 100644
  #endif
  
  /******************************************************************************
-@@ -867,6 +958,11 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
+@@ -869,6 +960,11 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
      ENGINE_CMD_FLAG_STRING},
  #endif
  
@@ -255,7 +255,7 @@ index 9de30c823b..80ebfffdb7 100644
     {0, NULL, NULL, 0}
  };
  
-@@ -933,6 +1029,13 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
+@@ -937,6 +1033,13 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
          return 1;
  #endif /* IMPLEMENT_DIGEST */
  
