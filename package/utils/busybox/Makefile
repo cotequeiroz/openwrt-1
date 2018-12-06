@@ -82,7 +82,7 @@ LDLIBS += $(call BUSYBOX_IF_ENABLED,PAM,pam pam_misc pthread)
 ifdef CONFIG_BUSYBOX_USE_LIBRPC
   TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include/tirpc
   export LDFLAGS=$(TARGET_LDFLAGS)
-  LDLIBS += rpc
+  LDLIBS += tirpc
 endif
 ifeq ($(CONFIG_USE_GLIBC),y)
   LDLIBS += $(call BUSYBOX_IF_ENABLED,NSLOOKUP_OPENWRT,resolv)
