@@ -1,17 +1,17 @@
-From 20fc64a791c43c210f792ef7a661dc5b423a28cf Mon Sep 17 00:00:00 2001
+From ac868d0d2833a4d99c6aab5391db254848724a22 Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
 Date: Tue, 6 Nov 2018 22:54:07 -0200
-Subject: [PATCH 4/4] eng_devcrypto: add command to dump driver info
+Subject: [PATCH 3/3] eng_devcrypto: add command to dump driver info
 
 This is useful to determine the kernel driver running each algorithm.
 
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index a49c8b85c3..5e85640a70 100644
+index 1390a05542..bfdb8fc68a 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
-@@ -50,16 +50,20 @@ static int use_softdrivers = DEVCRYPTO_REJECT_SOFTWARE;
+@@ -48,16 +48,20 @@ static int use_softdrivers = DEVCRYPTO_DEFAULT_USE_SOFDTRIVERS;
   */
  struct driver_info_st {
      enum devcrypto_status_t {
@@ -38,7 +38,7 @@ index a49c8b85c3..5e85640a70 100644
  };
  
  /******************************************************************************
-@@ -320,7 +324,7 @@ static void prepare_cipher_methods(void)
+@@ -392,7 +396,7 @@ static void prepare_cipher_methods(void)
          sess.cipher = cipher_data[i].devcryptoid;
          sess.keylen = cipher_data[i].keylen;
          if (ioctl(cfd, CIOCGSESSION, &sess) < 0) {
@@ -47,7 +47,7 @@ index a49c8b85c3..5e85640a70 100644
              continue;
          }
  
-@@ -342,19 +346,24 @@ static void prepare_cipher_methods(void)
+@@ -419,19 +423,24 @@ static void prepare_cipher_methods(void)
                                              cipher_cleanup)
              || !EVP_CIPHER_meth_set_impl_ctx_size(known_cipher_methods[i],
                                                    sizeof(struct cipher_ctx))) {
@@ -78,7 +78,7 @@ index a49c8b85c3..5e85640a70 100644
  #endif /* CIOCGSESSINFO */
          }
          ioctl(cfd, CIOCFSESSION, &sess.ses);
-@@ -402,8 +411,11 @@ static void destroy_all_cipher_methods(void)
+@@ -481,8 +490,11 @@ static void destroy_all_cipher_methods(void)
  {
      size_t i;
  
@@ -91,7 +91,7 @@ index a49c8b85c3..5e85640a70 100644
  }
  
  static int devcrypto_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
-@@ -447,6 +459,40 @@ static int cryptodev_select_cipher_cb(const char *str, int len, void *usr)
+@@ -526,6 +538,40 @@ static int cryptodev_select_cipher_cb(const char *str, int len, void *usr)
      return 1;
  }
  
@@ -132,7 +132,7 @@ index a49c8b85c3..5e85640a70 100644
  /*
   * We only support digests if the cryptodev implementation supports multiple
   * data updates and session copying.  Otherwise, we would be forced to maintain
-@@ -709,31 +755,36 @@ static void prepare_digest_methods(void)
+@@ -790,31 +836,36 @@ static void prepare_digest_methods(void)
          sess1.mac = digest_data[i].devcryptoid;
          sess2.ses = 0;
          if (ioctl(cfd, CIOCGSESSION, &sess1) < 0) {
@@ -177,7 +177,7 @@ index a49c8b85c3..5e85640a70 100644
              goto finish;
          }
          if ((known_digest_methods[i] = EVP_MD_meth_new(digest_data[i].nid,
-@@ -747,7 +798,7 @@ static void prepare_digest_methods(void)
+@@ -828,7 +879,7 @@ static void prepare_digest_methods(void)
              || !EVP_MD_meth_set_cleanup(known_digest_methods[i], digest_cleanup)
              || !EVP_MD_meth_set_app_datasize(known_digest_methods[i],
                                               sizeof(struct digest_ctx))) {
@@ -186,7 +186,7 @@ index a49c8b85c3..5e85640a70 100644
              EVP_MD_meth_free(known_digest_methods[i]);
              known_digest_methods[i] = NULL;
              goto finish;
-@@ -789,8 +840,11 @@ static void destroy_all_digest_methods(void)
+@@ -870,8 +921,11 @@ static void destroy_all_digest_methods(void)
  {
      size_t i;
  
@@ -199,7 +199,7 @@ index a49c8b85c3..5e85640a70 100644
  }
  
  static int devcrypto_digests(ENGINE *e, const EVP_MD **digest,
-@@ -834,6 +888,43 @@ static int cryptodev_select_digest_cb(const char *str, int len, void *usr)
+@@ -915,6 +969,43 @@ static int cryptodev_select_digest_cb(const char *str, int len, void *usr)
      return 1;
  }
  
@@ -243,7 +243,7 @@ index a49c8b85c3..5e85640a70 100644
  #endif
  
  /******************************************************************************
-@@ -869,6 +960,11 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
+@@ -953,6 +1044,11 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
      ENGINE_CMD_FLAG_STRING},
  #endif
  
@@ -255,7 +255,7 @@ index a49c8b85c3..5e85640a70 100644
     {0, NULL, NULL, 0}
  };
  
-@@ -937,6 +1033,13 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
+@@ -1021,6 +1117,13 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
          return 1;
  #endif /* IMPLEMENT_DIGEST */
  
