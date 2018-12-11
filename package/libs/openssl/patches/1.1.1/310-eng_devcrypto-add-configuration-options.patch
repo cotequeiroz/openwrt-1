@@ -1,7 +1,7 @@
-From 5b526f7c3e6c0efab471a76b4879fd876b8c5218 Mon Sep 17 00:00:00 2001
+From a8e6915b9ab91fc63cc96d1ca1d23c9753cbadbd Mon Sep 17 00:00:00 2001
 From: Eneas U de Queiroz <cote2004-github@yahoo.com>
-Date: Mon, 5 Nov 2018 14:02:08 -0200
-Subject: [PATCH 3/4] eng_devcrypto: add configuration options
+Date: Sat, 3 Nov 2018 15:41:10 -0300
+Subject: [PATCH 2/3] eng_devcrypto: add configuration options
 
 USE_SOFTDRIVERS: whether to use software (not accelerated) drivers
 CIPHERS: list of ciphers to enable
@@ -10,7 +10,7 @@ DIGESTS: list of digests to enable
 Signed-off-by: Eneas U de Queiroz <cote2004-github@yahoo.com>
 
 diff --git a/crypto/engine/eng_devcrypto.c b/crypto/engine/eng_devcrypto.c
-index f8e792d084..a49c8b85c3 100644
+index 1f6cbf3355..1390a05542 100644
 --- a/crypto/engine/eng_devcrypto.c
 +++ b/crypto/engine/eng_devcrypto.c
 @@ -16,6 +16,7 @@
@@ -21,18 +21,16 @@ index f8e792d084..a49c8b85c3 100644
  #include <openssl/evp.h>
  #include <openssl/err.h>
  #include <openssl/engine.h>
-@@ -34,6 +35,32 @@
+@@ -34,6 +35,30 @@
   * saner...  why re-open /dev/crypto for every session?
   */
  static int cfd;
 +#define DEVCRYPTO_REQUIRE_ACCELERATED 0 /* require confirmation of acceleration */
 +#define DEVCRYPTO_USE_SOFTWARE        1 /* allow software drivers */
-+#define DEVCRYPTO_REJECT_SOFTWARE     2  /* only disallow confirmed software drivers */
++#define DEVCRYPTO_REJECT_SOFTWARE     2 /* only disallow confirmed software drivers */
 +
-+#define STR_(S) #S
-+#define STR(S)  STR_(S)
-+
-+static int use_softdrivers = DEVCRYPTO_REJECT_SOFTWARE;
++#define DEVCRYPTO_DEFAULT_USE_SOFDTRIVERS DEVCRYPTO_REJECT_SOFTWARE
++static int use_softdrivers = DEVCRYPTO_DEFAULT_USE_SOFDTRIVERS;
 +
 +/*
 + * cipher/digest status & acceleration definitions
@@ -54,7 +52,7 @@ index f8e792d084..a49c8b85c3 100644
  
  /******************************************************************************
   *
-@@ -106,13 +133,22 @@ static const struct cipher_data_st {
+@@ -108,13 +133,22 @@ static const struct cipher_data_st {
  #endif
  };
  
@@ -78,38 +76,9 @@ index f8e792d084..a49c8b85c3 100644
  
      /*
       * Code further down must make sure that only NIDs in the table above
-@@ -236,47 +272,40 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)
-     return 1;
+@@ -310,19 +344,40 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)
  }
  
--static int devcrypto_test_cipher(size_t cipher_data_index)
--{
--    struct session_op sess;
--#ifdef CIOCGSESSINFO
--    struct session_info_op siop;
--#endif
--    int ret=0;
--
--    memset(&sess, 0, sizeof(sess));
--    sess.key = (void *)"01234567890123456789012345678901234567890123456789";
--    sess.cipher = cipher_data[cipher_data_index].devcryptoid;
--    sess.keylen = cipher_data[cipher_data_index].keylen;
--    if (ioctl(cfd, CIOCGSESSION, &sess) < 0)
--        return 0;
--#ifdef CIOCGSESSINFO
--    siop.ses = sess.ses;
--    /* Don't use software (non-accelerated) drivers,
--     * but only if we can get that info */
--    if (ioctl(cfd, CIOCGSESSINFO, &siop) < 0
--        || (siop.flags & SIOP_FLAG_KERNEL_DRIVER_ONLY))
--        ret = 1;
--#else
--    ret = 1;
--#endif
--    ioctl(cfd, CIOCFSESSION, &sess.ses);
--    return ret;
--}
--
  /*
 - * Keep a table of known nids and associated methods.
 + * Keep tables of known nids, associated methods, selected ciphers, and driver
@@ -141,6 +110,7 @@ index f8e792d084..a49c8b85c3 100644
  {
      size_t i;
      struct session_op sess;
+     unsigned long cipher_mode;
 +#ifdef CIOCGSESSINFO
 +    struct session_info_op siop;
 +#endif
@@ -149,26 +119,28 @@ index f8e792d084..a49c8b85c3 100644
  
      memset(&sess, 0, sizeof(sess));
      sess.key = (void *)"01234567890123456789012345678901234567890123456789";
-@@ -284,11 +313,16 @@ static void prepare_cipher_methods(void)
+@@ -330,15 +385,16 @@ static void prepare_cipher_methods(void)
      for (i = 0, known_cipher_nids_amount = 0;
           i < OSSL_NELEM(cipher_data); i++) {
  
 +        selected_ciphers[i] = 1;
          /*
--         * Check that the algo is usable
+-         * Check that the algo is really availably by trying to open and close
+-         * a session.
 +         * Check that the cipher is usable
           */
--        if (!devcrypto_test_cipher(i))
-+        sess.cipher = cipher_data[i].devcryptoid;
-+        sess.keylen = cipher_data[i].keylen;
+         sess.cipher = cipher_data[i].devcryptoid;
+         sess.keylen = cipher_data[i].keylen;
+-        if (ioctl(cfd, CIOCGSESSION, &sess) < 0
+-            || ioctl(cfd, CIOCFSESSION, &sess.ses) < 0)
 +        if (ioctl(cfd, CIOCGSESSION, &sess) < 0) {
 +            cipher_driver_info[i].status = DEVCRYPTO_STATUS_UNUSABLE;
              continue;
 +        }
  
-         if ((known_cipher_methods[i] =
-                  EVP_CIPHER_meth_new(cipher_data[i].nid,
-@@ -308,15 +342,39 @@ static void prepare_cipher_methods(void)
+         cipher_mode = cipher_data[i].flags & EVP_CIPH_MODE;
+ 
+@@ -363,15 +419,41 @@ static void prepare_cipher_methods(void)
                                              cipher_cleanup)
              || !EVP_CIPHER_meth_set_impl_ctx_size(known_cipher_methods[i],
                                                    sizeof(struct cipher_ctx))) {
@@ -195,7 +167,7 @@ index f8e792d084..a49c8b85c3 100644
      }
  }
  
-+static void rebuild_known_cipher_nids(void)
++static void rebuild_known_cipher_nids(ENGINE *e)
 +{
 +    size_t i;
 +
@@ -203,12 +175,14 @@ index f8e792d084..a49c8b85c3 100644
 +        if (devcrypto_test_cipher(i))
 +            known_cipher_nids[known_cipher_nids_amount++] = cipher_data[i].nid;
 +    }
++    ENGINE_unregister_ciphers(e);
++    ENGINE_register_ciphers(e);
 +}
 +
  static const EVP_CIPHER *get_cipher_method(int nid)
  {
      size_t i = get_cipher_data_index(nid);
-@@ -359,6 +417,36 @@ static int devcrypto_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
+@@ -414,6 +496,36 @@ static int devcrypto_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
      return *cipher != NULL;
  }
  
@@ -245,7 +219,7 @@ index f8e792d084..a49c8b85c3 100644
  /*
   * We only support digests if the cryptodev implementation supports multiple
   * data updates and session copying.  Otherwise, we would be forced to maintain
-@@ -413,13 +501,22 @@ static const struct digest_data_st {
+@@ -468,13 +580,22 @@ static const struct digest_data_st {
  #endif
  };
  
@@ -269,16 +243,24 @@ index f8e792d084..a49c8b85c3 100644
  
      /*
       * Code further down must make sure that only NIDs in the table above
-@@ -553,65 +650,92 @@ static int digest_cleanup(EVP_MD_CTX *ctx)
+@@ -491,8 +612,8 @@ static const struct digest_data_st *get_digest_data(int nid)
+ }
+ 
+ /*
+- * Following are the four necessary functions to map OpenSSL functionality
+- * with cryptodev.
++ * Following are the five necessary functions to map OpenSSL functionality
++ * with cryptodev: init, update, final, cleanup, and copy.
+  */
+ 
+ static int digest_init(EVP_MD_CTX *ctx)
+@@ -608,52 +729,94 @@ static int digest_cleanup(EVP_MD_CTX *ctx)
      return 1;
  }
  
 -static int devcrypto_test_digest(size_t digest_data_index)
 -{
 -    struct session_op sess1, sess2;
--#ifdef CIOCGSESSINFO
--    struct session_info_op siop;
--#endif
 -    struct cphash_op cphash;
 -    int ret=0;
 -
@@ -287,26 +269,16 @@ index f8e792d084..a49c8b85c3 100644
 -    sess1.mac = digest_data[digest_data_index].devcryptoid;
 -    if (ioctl(cfd, CIOCGSESSION, &sess1) < 0)
 -        return 0;
--#ifdef CIOCGSESSINFO
--    siop.ses = sess1.ses;
--    /* Don't use software (non-accelerated) drivers,
--     * but only if we can get that info */
--    if (ioctl(cfd, CIOCGSESSINFO, &siop) >= 0
--        && !(siop.flags & SIOP_FLAG_KERNEL_DRIVER_ONLY))
--        goto finish;
--#endif
 -    /* Make sure the driver is capable of hash state copy */
 -    sess2.mac = sess1.mac;
--    if (ioctl(cfd, CIOCGSESSION, &sess2) < 0)
--        goto finish;
--    cphash.src_ses = sess1.ses;
--    cphash.dst_ses = sess2.ses;
--    if (ioctl(cfd, CIOCCPHASH, &cphash) >= 0)
--        ret = 1;
--finish:
--    ioctl(cfd, CIOCFSESSION, &sess1.ses);
--    if (sess2.ses == 0)
+-    if (ioctl(cfd, CIOCGSESSION, &sess2) >= 0) {
+-        cphash.src_ses = sess1.ses;
+-        cphash.dst_ses = sess2.ses;
+-        if (ioctl(cfd, CIOCCPHASH, &cphash) >= 0)
+-            ret = 1;
 -        ioctl(cfd, CIOCFSESSION, &sess2.ses);
+-    }
+-    ioctl(cfd, CIOCFSESSION, &sess1.ses);
 -    return ret;
 -}
 -
@@ -336,7 +308,7 @@ index f8e792d084..a49c8b85c3 100644
 +                    && use_softdrivers == DEVCRYPTO_REJECT_SOFTWARE)));
 +}
 +
-+static void rebuild_known_digest_nids(void)
++static void rebuild_known_digest_nids(ENGINE *e)
 +{
 +    size_t i;
 +
@@ -344,6 +316,8 @@ index f8e792d084..a49c8b85c3 100644
 +        if (devcrypto_test_digest(i))
 +            known_digest_nids[known_digest_nids_amount++] = digest_data[i].nid;
 +    }
++    ENGINE_unregister_digests(e);
++    ENGINE_register_digests(e);
 +}
  
  static void prepare_digest_methods(void)
@@ -404,7 +378,7 @@ index f8e792d084..a49c8b85c3 100644
          if ((known_digest_methods[i] = EVP_MD_meth_new(digest_data[i].nid,
                                                         NID_undef)) == NULL
              || !EVP_MD_meth_set_result_size(known_digest_methods[i],
-@@ -623,11 +747,18 @@ static void prepare_digest_methods(void)
+@@ -665,11 +828,18 @@ static void prepare_digest_methods(void)
              || !EVP_MD_meth_set_cleanup(known_digest_methods[i], digest_cleanup)
              || !EVP_MD_meth_set_app_datasize(known_digest_methods[i],
                                               sizeof(struct digest_ctx))) {
@@ -425,7 +399,7 @@ index f8e792d084..a49c8b85c3 100644
      }
  }
  
-@@ -673,8 +804,145 @@ static int devcrypto_digests(ENGINE *e, const EVP_MD **digest,
+@@ -715,8 +885,148 @@ static int devcrypto_digests(ENGINE *e, const EVP_MD **digest,
      return *digest != NULL;
  }
  
@@ -476,9 +450,12 @@ index f8e792d084..a49c8b85c3 100644
 +#ifdef CIOCGSESSINFO
 +   {DEVCRYPTO_CMD_USE_SOFTDRIVERS,
 +    "USE_SOFTDRIVERS",
-+    "specifies whether to use software (not accelerated) drivers (" STR(DEVCRYPTO_REQUIRE_ACCELERATED)
-+        "=use only accelerated drivers, " STR(DEVCRYPTO_USE_SOFTWARE) "=allow all drivers, "
-+        STR(DEVCRYPTO_REJECT_SOFTWARE) "=use if acceleration can't be determined [default=2])",
++    "specifies whether to use software (not accelerated) drivers ("
++        OPENSSL_MSTR(DEVCRYPTO_REQUIRE_ACCELERATED) "=use only accelerated drivers, "
++        OPENSSL_MSTR(DEVCRYPTO_USE_SOFTWARE) "=allow all drivers, "
++        OPENSSL_MSTR(DEVCRYPTO_REJECT_SOFTWARE)
++        "=use if acceleration can't be determined) [default="
++        OPENSSL_MSTR(DEVCRYPTO_DEFAULT_USE_SOFDTRIVERS) "]",
 +    ENGINE_CMD_FLAG_NUMERIC},
 +#endif
 +
@@ -500,10 +477,10 @@ index f8e792d084..a49c8b85c3 100644
 +static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
 +{
 +    int *new_list;
-+    switch(cmd) {
++    switch (cmd) {
 +#ifdef CIOCGSESSINFO
 +    case DEVCRYPTO_CMD_USE_SOFTDRIVERS:
-+        switch(i) {
++        switch (i) {
 +        case DEVCRYPTO_REQUIRE_ACCELERATED:
 +        case DEVCRYPTO_USE_SOFTWARE:
 +        case DEVCRYPTO_REJECT_SOFTWARE:
@@ -516,9 +493,9 @@ index f8e792d084..a49c8b85c3 100644
 +            return 1;
 +        use_softdrivers = i;
 +#ifdef IMPLEMENT_DIGEST
-+        rebuild_known_digest_nids();
++        rebuild_known_digest_nids(e);
 +#endif
-+        rebuild_known_cipher_nids();
++        rebuild_known_cipher_nids(e);
 +        return 1;
 +#endif /* CIOCGSESSINFO */
 +
@@ -538,7 +515,7 @@ index f8e792d084..a49c8b85c3 100644
 +            memcpy(selected_ciphers, new_list, sizeof(selected_ciphers));
 +            OPENSSL_free(new_list);
 +        }
-+        rebuild_known_cipher_nids();
++        rebuild_known_cipher_nids(e);
 +        return 1;
 +
 +#ifdef IMPLEMENT_DIGEST
@@ -558,7 +535,7 @@ index f8e792d084..a49c8b85c3 100644
 +            memcpy(selected_digests, new_list, sizeof(selected_digests));
 +            OPENSSL_free(new_list);
 +        }
-+        rebuild_known_digest_nids();
++        rebuild_known_digest_nids(e);
 +        return 1;
 +#endif /* IMPLEMENT_DIGEST */
 +
@@ -571,7 +548,7 @@ index f8e792d084..a49c8b85c3 100644
  /******************************************************************************
   *
   * LOAD / UNLOAD
-@@ -724,6 +992,8 @@ void engine_load_devcrypto_int()
+@@ -766,6 +1076,8 @@ void engine_load_devcrypto_int()
  
      if (!ENGINE_set_id(e, "devcrypto")
          || !ENGINE_set_name(e, "/dev/crypto engine")
