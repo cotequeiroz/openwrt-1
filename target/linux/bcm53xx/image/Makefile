@@ -228,7 +228,7 @@ define Device/linksys-ea6300-v1
   DEVICE_TITLE := Linksys EA6300 V1
   DEVICE_PACKAGES := $(B43) $(USB3_PACKAGES)
 endef
-# TARGET_DEVICES += linksys-ea6300-v1
+TARGET_DEVICES += linksys-ea6300-v1
 
 define Device/linksys-ea6500-v2
   DEVICE_TITLE := Linksys EA6500 V2
