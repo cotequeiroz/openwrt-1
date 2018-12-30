@@ -1,0 +1,29 @@
+From 57e3652aec12098446f1faf80dc53d386251a0b3 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Fri, 19 Jul 2013 12:57:28 +0200
+Subject: [PATCH] string: Silence warning
+
+include/string:85:3: warning: ordered comparison of pointer with integer
+zero [-Wextra]
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/string | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/string b/include/string
+index 7826ce7..313288d 100644
+--- a/include/string
++++ b/include/string
+@@ -82,7 +82,7 @@ public:
+ 		if(n == npos){
+ 			__throw_out_of_range();
+ 		}
+-		if(s > 0){
++		if (*s > 0){
+ 			resize(n);
+ 			Tr::copy(vector<Ch, A>::data, s, vector<Ch, A>::elements);
+ 		}
+-- 
+2.20.1
+

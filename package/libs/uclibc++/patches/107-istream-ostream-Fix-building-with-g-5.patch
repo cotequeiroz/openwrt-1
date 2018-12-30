@@ -1,0 +1,48 @@
+From d841ce2fdff4d28e28992dc3d4594694b6cf3516 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Sun, 6 Mar 2016 00:33:24 +0100
+Subject: [PATCH] istream, ostream: Fix building with g++ >= 5
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+include/ostream:298:50: error: default argument for template parameter for class enclosing ‘class std::basic_ostream<charT, traits>::sentry’
+include/istream:343:107: error: default argument for template parameter for class enclosing ‘class std::basic_istream<charT, traits>::sentry’
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/istream | 4 +++-
+ include/ostream | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/istream b/include/istream
+index 59d7f6e..a6fe3de 100644
+--- a/include/istream
++++ b/include/istream
+@@ -340,7 +340,9 @@ namespace std{
+ 
+ 	};
+ 
+-	template <class charT,class traits = char_traits<charT> > class _UCXXEXPORT basic_istream<charT,traits>::sentry {
++	template <class charT,class traits>
++		class _UCXXEXPORT basic_istream<charT,traits>::sentry
++	{
+ 		bool ok;
+ 	public:
+ 		explicit _UCXXEXPORT sentry(basic_istream<charT,traits>& os, bool noskipws = false){
+diff --git a/include/ostream b/include/ostream
+index bc9a44a..b112e94 100644
+--- a/include/ostream
++++ b/include/ostream
+@@ -294,7 +294,7 @@ namespace std {
+ #endif
+ #endif
+ 
+-	template <class charT,class traits = char_traits<charT> >
++	template <class charT,class traits>
+ 		class _UCXXEXPORT basic_ostream<charT,traits>::sentry
+ 	{
+ 		bool ok;
+-- 
+2.20.1
+

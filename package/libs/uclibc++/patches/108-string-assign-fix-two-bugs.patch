@@ -1,0 +1,131 @@
+From 26deb1776d5811b45308946f416135783290233a Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Sun, 6 Mar 2016 12:42:39 +0100
+Subject: [PATCH] string: assign(): fix two bugs
+
+std::string a.assign(10, '+');
+did not work (now checkAssignFillChar).
+
+assign(iterator::begin(), iterator::end()) relied on permissive
+(checkAssignIterator).
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/string                   |  5 +--
+ tests/stringtest.cpp             | 55 ++++++++++++++++++++++++++++++++
+ tests/testoutput/stringtest.good |  4 +--
+ 3 files changed, 60 insertions(+), 4 deletions(-)
+
+diff --git a/include/string b/include/string
+index 313288d..a790715 100644
+--- a/include/string
++++ b/include/string
+@@ -219,14 +219,15 @@ public:
+ 
+ 	_UCXXEXPORT basic_string& assign(size_type n, Ch c){
+ 		vector<Ch, A>::clear();
+-		vector<Ch, A>::resize(n, Ch() );
++		vector<Ch, A>::resize(n, c);
+ 		return *this;
+ 	}
+ 
+ 	template<class InputIterator> _UCXXEXPORT basic_string& assign(InputIterator first, InputIterator last){
+ 		vector<Ch, A>::resize(0, Ch());
+ 		while (first != last){
+-			append(*first);
++			const Ch x = *first;
++			append(&x);
+ 			++first;
+ 		}
+ 		return *this;
+diff --git a/tests/stringtest.cpp b/tests/stringtest.cpp
+index a69813c..85d451b 100644
+--- a/tests/stringtest.cpp
++++ b/tests/stringtest.cpp
+@@ -391,6 +391,53 @@ bool checkInsertAtInteractor() {
+ 	return true;
+ }
+ 
++bool checkAssignFillType() {
++	return true;
++#if 0
++	std::string a;
++	a.assign<int>(10, 0x2B);
++	return a == "++++++++++";
++#endif
++}
++
++bool checkAssignFillChar() {
++	std::string a;
++	a.assign(10, '+');
++	return a == "++++++++++";
++}
++
++bool checkAssignString() {
++	std::string a = "This is a string";
++	std::string b;
++	b.assign(a);
++	return b == a;
++}
++bool checkAssignSubstring() {
++	std::string a = "This is a string";
++	std::string b;
++	b.assign(a, 2, 5);
++	return b == "is is";
++}
++
++bool checkAssignCstring() {
++	std::string a;
++	a.assign("This is a c string");
++	return a == "This is a c string";
++}
++
++bool checkAssignBuffer() {
++	std::string a;
++	a.assign("This is a c string", 8);
++	return a == "This is ";
++}
++
++bool checkAssignIterator() {
++	std::string a = "This is a string";
++	std::string b;
++	b.assign(a.begin() + 2, a.end() - 6);
++	return b == "is is a ";
++}
++
+ int main(){
+ 	TestFramework::init();
+ 
+@@ -491,6 +538,14 @@ int main(){
+ 
+ 	TestFramework::AssertReturns<bool>(checkInsertAtInteractor, true);
+ 
++	TestFramework::AssertReturns<bool>(checkAssignFillType, true);
++	TestFramework::AssertReturns<bool>(checkAssignFillChar, true);
++	TestFramework::AssertReturns<bool>(checkAssignString, true);
++	TestFramework::AssertReturns<bool>(checkAssignSubstring, true);
++	TestFramework::AssertReturns<bool>(checkAssignCstring, true);
++	TestFramework::AssertReturns<bool>(checkAssignBuffer, true);
++	TestFramework::AssertReturns<bool>(checkAssignIterator, true);
++
+ 	TestFramework::results();
+ 
+ 	return 0;
+diff --git a/tests/testoutput/stringtest.good b/tests/testoutput/stringtest.good
+index f27b917..78067ba 100644
+--- a/tests/testoutput/stringtest.good
++++ b/tests/testoutput/stringtest.good
+@@ -8,8 +8,8 @@ a = b + c: This is test string bThis is test string c
+ a = "Test cstring" + b: Test cstringThis is test string b
+ Please enter a test string:
+ You entered: word1
+-.........................................................
++................................................................
+ ------------------------------
+-Ran 57 tests
++Ran 64 tests
+ 
+ OK
+-- 
+2.20.1
+

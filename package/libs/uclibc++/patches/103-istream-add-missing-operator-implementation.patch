@@ -1,0 +1,36 @@
+From 0b09938d5d4b9108b76e6d5d5d6d07d38eacd323 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Per=20=C3=98yvind=20Karlsen?= <proyvind@moondrake.org>
+Date: Tue, 28 May 2013 00:31:33 +0200
+Subject: [PATCH] istream: add missing operator >> implementation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Per Øyvind Karlsen <proyvind@moondrake.org>
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/istream | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/include/istream b/include/istream
+index d67f48f..59d7f6e 100644
+--- a/include/istream
++++ b/include/istream
+@@ -554,6 +554,14 @@ namespace std{
+ 		return *this;
+ 	}
+ 
++	template <class charT, class traits> _UCXXEXPORT basic_istream<charT,traits>&
++		basic_istream<charT,traits>::operator>>(ios_base& (*pf)(ios_base&))
++	{
++		sentry(*this);
++		pf(*this);
++		return *this;
++	}
++
+ 	template <class charT, class traits> _UCXXEXPORT basic_istream<charT,traits>&
+ 		ws(basic_istream<charT,traits>& is)
+ 	{
+-- 
+2.20.1
+

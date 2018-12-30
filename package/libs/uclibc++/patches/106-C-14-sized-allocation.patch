@@ -1,0 +1,105 @@
+From 288302797b8d9aa2c8b060159fcdd7acc4dc80f2 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Sun, 6 Mar 2016 00:28:56 +0100
+Subject: [PATCH] C++14 sized allocation
+
+Fixes linking with gcc-6.0
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/new      |  6 ++++++
+ src/del_ops.cpp  | 27 +++++++++++++++++++++++++++
+ src/del_opvs.cpp | 27 +++++++++++++++++++++++++++
+ 3 files changed, 60 insertions(+)
+ create mode 100644 src/del_ops.cpp
+ create mode 100644 src/del_opvs.cpp
+
+diff --git a/include/new b/include/new
+index 665e783..0949a09 100644
+--- a/include/new
++++ b/include/new
+@@ -39,9 +39,15 @@ namespace std{
+ 
+ _UCXXEXPORT void* operator new(std::size_t numBytes) throw(std::bad_alloc);
+ _UCXXEXPORT void operator delete(void* ptr) throw();
++#if __cpp_sized_deallocation
++_UCXXEXPORT void operator delete(void* ptr, std::size_t) throw();
++#endif
+ 
+ _UCXXEXPORT void* operator new[](std::size_t numBytes) throw(std::bad_alloc);
+ _UCXXEXPORT void operator delete[](void * ptr) throw();
++#if __cpp_sized_deallocation
++_UCXXEXPORT void operator delete[](void * ptr, std::size_t) throw();
++#endif
+ 
+ #ifndef NO_NOTHROW
+ _UCXXEXPORT void* operator new(std::size_t numBytes, const std::nothrow_t& ) throw();
+diff --git a/src/del_ops.cpp b/src/del_ops.cpp
+new file mode 100644
+index 0000000..e292b03
+--- /dev/null
++++ b/src/del_ops.cpp
+@@ -0,0 +1,27 @@
++/*	Copyright (C) 2015 Bernhard Reutner-Fischer
++
++	This file is part of the uClibc++ Library.
++
++	This library is free software; you can redistribute it and/or
++	modify it under the terms of the GNU Lesser General Public
++	License as published by the Free Software Foundation; either
++	version 2.1 of the License, or (at your option) any later version.
++
++	This library is distributed in the hope that it will be useful,
++	but WITHOUT ANY WARRANTY; without even the implied warranty of
++	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++	Lesser General Public License for more details.
++
++	You should have received a copy of the GNU Lesser General Public
++	License along with this library; if not, write to the Free Software
++	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++*/
++/* C++14 sized deallocation */
++
++#include <new>
++#include <cstdlib>
++#include <func_exception>
++
++_UCXXEXPORT void operator delete(void* ptr, std::size_t) throw(){
++	::operator delete (ptr);
++}
+diff --git a/src/del_opvs.cpp b/src/del_opvs.cpp
+new file mode 100644
+index 0000000..1c92d1f
+--- /dev/null
++++ b/src/del_opvs.cpp
+@@ -0,0 +1,27 @@
++/*	Copyright (C) 2015 Bernhard Reutner-Fischer
++
++	This file is part of the uClibc++ Library.
++
++	This library is free software; you can redistribute it and/or
++	modify it under the terms of the GNU Lesser General Public
++	License as published by the Free Software Foundation; either
++	version 2.1 of the License, or (at your option) any later version.
++
++	This library is distributed in the hope that it will be useful,
++	but WITHOUT ANY WARRANTY; without even the implied warranty of
++	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++	Lesser General Public License for more details.
++
++	You should have received a copy of the GNU Lesser General Public
++	License along with this library; if not, write to the Free Software
++	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++*/
++/* C++14 sized deallocation */
++
++#include <new>
++#include <cstdlib>
++#include <func_exception>
++
++_UCXXEXPORT void operator delete[](void * ptr, std::size_t) throw(){
++	::operator delete[] (ptr);
++}
+-- 
+2.20.1
+

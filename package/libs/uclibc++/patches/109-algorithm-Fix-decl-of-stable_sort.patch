@@ -1,0 +1,109 @@
+From adb1d3558256864519771a9214789b75f00e2692 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Fri, 23 Sep 2016 15:29:34 +0200
+Subject: [PATCH] algorithm: Fix decl of stable_sort
+
+Moritz Warning reported that stable_sort needs to be declared before sort.
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/algorithm              | 12 ++++++------
+ tests/algotest.cpp             | 31 +++++++++++++++++++++++++++++++
+ tests/testoutput/algotest.good |  4 ++--
+ 3 files changed, 39 insertions(+), 8 deletions(-)
+
+diff --git a/include/algorithm b/include/algorithm
+index 5e8f139..af04f97 100644
+--- a/include/algorithm
++++ b/include/algorithm
+@@ -830,12 +830,6 @@ namespace std{
+ 		sort(first, last, c );
+ 	}
+ 
+-	template<class RandomAccessIterator, class Compare> _UCXXEXPORT
+-		void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+-	{
+-		stable_sort(first, last, comp);
+-	}
+-
+ 	template<class RandomAccessIterator> _UCXXEXPORT
+ 		void stable_sort(RandomAccessIterator first, RandomAccessIterator last)
+ 	{
+@@ -861,6 +855,12 @@ namespace std{
+ 		}
+ 	}
+ 
++	template<class RandomAccessIterator, class Compare> _UCXXEXPORT
++		void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
++	{
++		stable_sort(first, last, comp);
++	}
++
+ 	template<class RandomAccessIterator> _UCXXEXPORT
+ 		void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last)
+ 	{
+diff --git a/tests/algotest.cpp b/tests/algotest.cpp
+index cda5919..23ba3ae 100644
+--- a/tests/algotest.cpp
++++ b/tests/algotest.cpp
+@@ -389,6 +389,36 @@ bool testPartialSort(){
+ 	return true;
+ }
+ 
++bool testSort() {
++	struct _my_comp {
++		inline bool operator()(const int &a, const int &b) const {
++			return a > b;
++		}
++	};
++	std::vector<int> a;
++	std::vector<int>::iterator i;
++
++	a.push_back(5);
++	a.push_back(2);
++	a.push_back(4);
++	a.push_back(3);
++	a.push_back(1);
++	a.push_back(0);
++
++	i = a.begin();
++
++	std::sort<std::vector<int>::iterator>(a.begin(), a.end(), _my_comp());
++
++	for (int j = 0; j < 6; ++j) {
++		if (a[j] != 5 - j) {
++			printf("Key %i should be %i but is %i\n", j, 5-j, a[j]);
++			return false;
++		}
++	}
++
++	return true;
++}
++
+ bool testInplaceMerge(){
+ 	std::vector<int> a;
+ 	std::vector<int>::iterator i;
+@@ -572,6 +602,7 @@ int main(){
+         TestFramework::AssertReturns<bool>(testPushHeap, true);
+         TestFramework::AssertReturns<bool>(testSortHeap, true);
+         TestFramework::AssertReturns<bool>(testPartialSort, true);
++        TestFramework::AssertReturns<bool>(testSort, true);
+         TestFramework::AssertReturns<bool>(testInplaceMerge, true);
+         TestFramework::AssertReturns<bool>(testNextPermutation, true);
+         TestFramework::AssertReturns<bool>(testPrevPermutation, true);
+diff --git a/tests/testoutput/algotest.good b/tests/testoutput/algotest.good
+index 53f2bb5..4d30e0a 100644
+--- a/tests/testoutput/algotest.good
++++ b/tests/testoutput/algotest.good
+@@ -1,6 +1,6 @@
+ Beginning algorithm test
+-..............
++...............
+ ------------------------------
+-Ran 14 tests
++Ran 15 tests
+ 
+ OK
+-- 
+2.20.1
+

@@ -1,0 +1,171 @@
+From 84d7065f38333035fe273bf7748b9ad686920b18 Mon Sep 17 00:00:00 2001
+From: Rosen Penev <rosenp@gmail.com>
+Date: Fri, 28 Dec 2018 15:03:41 -0800
+Subject: [PATCH] istream: Add 64-bit integer support for 32-bit systems
+
+A program I was testing was failing compilation because it was using a
+uint64_t variable with an istringstream.
+
+Guarded with __STRICT_ANSI__ as done in include/ostream.
+
+Signed-off-by: Rosen Penev <rosenp@gmail.com>
+---
+ include/istream         | 21 ++++++++++++++++
+ include/istream_helpers | 55 +++++++++++++++++++++++++++++++++++++++++
+ src/istream.cpp         |  4 +++
+ tests/sstreamtest.cpp   | 10 +++++++-
+ 4 files changed, 89 insertions(+), 1 deletion(-)
+
+diff --git a/include/istream b/include/istream
+index 2083eef..a3efe3f 100644
+--- a/include/istream
++++ b/include/istream
+@@ -71,6 +71,10 @@ namespace std{
+ 		basic_istream<charT,traits>& operator>>(unsigned long& n);
+ 		basic_istream<charT,traits>& operator>>(void*& p);
+ 		basic_istream<charT,traits>& operator>>(basic_streambuf<char_type,traits>* sb);
++#ifndef __STRICT_ANSI__
++		basic_istream<charT,traits>& operator>>(long long& n);
++		basic_istream<charT,traits>& operator>>(unsigned long long& n);
++#endif
+ 
+ #ifdef __UCLIBCXX_HAS_FLOATS__
+ 		basic_istream<charT,traits>& operator>>(float& f);
+@@ -450,6 +454,23 @@ namespace std{
+ 		return *this;
+ 	}
+ 
++#ifndef __STRICT_ANSI__
++	template <class charT, class traits> _UCXXEXPORT basic_istream<charT,traits>&
++		basic_istream<charT,traits>::operator>>(long long& n)
++	{
++		sentry(*this);
++		__istream_readin<traits, charT, long long>::readin(*this, n);
++		return *this;
++	}
++	template <class charT, class traits> _UCXXEXPORT basic_istream<charT,traits>&
++		basic_istream<charT,traits>::operator>>(unsigned long long& n)
++	{
++		sentry(*this);
++		__istream_readin<traits, charT, unsigned long long>::readin(*this, n);
++		return *this;
++	}
++#endif
++
+ #ifdef __UCLIBCXX_HAS_FLOATS__
+ 	template <class charT, class traits> _UCXXEXPORT basic_istream<charT,traits>&
+ 		basic_istream<charT,traits>::operator>>(float& f)
+diff --git a/include/istream_helpers b/include/istream_helpers
+index 588df7f..d87e0c7 100644
+--- a/include/istream_helpers
++++ b/include/istream_helpers
+@@ -301,6 +301,61 @@ namespace std{
+ 	};
+ 
+ 
++#ifndef __STRICT_ANSI__
++	template <class traits> class _UCXXEXPORT __istream_readin<traits, char, long long>{
++	public:
++		inline static void readin(basic_istream<char, traits >& stream, long long & var)
++		{
++			basic_string<char, traits > temp;
++
++			if(stream.flags() & ios_base::dec){
++				temp = _readTokenDecimal( stream);
++				sscanf(temp.c_str(), "%lld", &var );
++			}else{
++				temp = _readToken( stream);
++				if( stream.flags() & ios_base::oct){
++					sscanf(temp.c_str(), "%llo", (unsigned long long *)&var );
++				}else if(stream.flags() & ios_base::hex){
++					if(stream.flags() & ios_base::uppercase){
++						scanf(temp.c_str(), "%llX", (unsigned long long *)&var );
++					}else{
++						sscanf(temp.c_str(), "%llx", (unsigned long long *)&var);
++					}
++				}else{
++					sscanf(temp.c_str(), "%lli", (&var) );
++				}
++			}
++		}
++	};
++
++
++	template <class traits> class _UCXXEXPORT __istream_readin<traits, char, unsigned long long>{
++	public:
++		inline static void readin(basic_istream<char, traits >& stream, unsigned long long & var)
++		{
++			basic_string<char, traits > temp;
++
++			if(stream.flags() & ios_base::dec){
++				temp = _readTokenDecimal( stream);
++				sscanf(temp.c_str(), "%llu", &var );
++			}else{
++				temp = _readToken( stream);
++				if( stream.flags() & ios_base::oct){
++					sscanf(temp.c_str(), "%llo", &var );
++				}else if(stream.flags() & ios_base::hex){
++					if(stream.flags() & ios_base::uppercase){
++						scanf(temp.c_str(), "%llX", &var );
++					}else{
++						sscanf(temp.c_str(), "%llx", &var);
++					}
++				}else{
++					sscanf(temp.c_str(), "%lli", (long long *)(&var) );
++				}
++			}
++		}
++	};
++#endif
++
+ #ifdef __UCLIBCXX_HAS_FLOATS__
+ 
+ 	template <class traits> class _UCXXEXPORT __istream_readin<traits, char, float>{
+diff --git a/src/istream.cpp b/src/istream.cpp
+index 9e96139..73acf50 100644
+--- a/src/istream.cpp
++++ b/src/istream.cpp
+@@ -59,6 +59,10 @@ namespace std{
+ 	template _UCXXEXPORT istream & istream::operator>>(void *& p);
+ 	template _UCXXEXPORT istream & operator>>(istream & is, char & c);
+ 
++#ifndef __STRICT_ANSI__
++	template _UCXXEXPORT istream & istream::operator>>(long long &n);
++	template _UCXXEXPORT istream & istream::operator>>(unsigned long long &n);
++#endif
+ 
+ #ifdef __UCLIBCXX_HAS_FLOATS__
+ 	template _UCXXEXPORT istream & istream::operator>>(float &f);
+diff --git a/tests/sstreamtest.cpp b/tests/sstreamtest.cpp
+index df3d521..7543ee3 100644
+--- a/tests/sstreamtest.cpp
++++ b/tests/sstreamtest.cpp
+@@ -9,6 +9,9 @@ int main(){
+ 	int i;
+ 	std::string s;
+ 	char c;
++#ifndef __STRICT_ANSI__
++	long long ll;
++#endif
+ 
+ 	a << "Starting testing ";
+ 	a << 2 ;
+@@ -28,9 +31,14 @@ int main(){
+ 
+ 
+ 
++#ifndef __STRICT_ANSI__
++	a.str("55 2.35 5 Test");
++	a >> ll >> f >> i >> s;
++	std::cout << "ll (should be 55): " << ll << std::endl;
++#else
+ 	a.str("2.35 5 Test");
+-
+ 	a >> f >> i >> s;
++#endif
+ 
+ 	std::cout << "f (should be 2.35): " << f << std::endl;
+ 	std::cout << "i (should be 5): " << i << std::endl;
+-- 
+2.20.1
+

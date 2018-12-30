@@ -1,0 +1,41 @@
+From 26cf67ef536de3872c6cbab1f9a146415bc65940 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Sun, 30 Sep 2018 20:45:35 +0200
+Subject: [PATCH] cstdio: conditionalize tmpnam
+
+GCC added a configure check for tmpnam() in
+e1150b06d0409baf4b71121be0cafeab180f2858 (a.k.a svn r207009)
+
+POSIX.1-2008 (SUSv4) marks tmpnam() as obsolescent. As such it is not
+available in uClibc unless SUSv4 legacy stuff is enabled.
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/cstdio | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/cstdio b/include/cstdio
+index 8f4df27..8699385 100644
+--- a/include/cstdio
++++ b/include/cstdio
+@@ -48,6 +48,7 @@ namespace std{
+ 	using ::getc;
+ 	using ::getchar;
+ #if __cplusplus <= 201103L
++	// LWG 2249
+ 	using ::gets;
+ #endif
+ 	using ::perror;
+@@ -64,7 +65,9 @@ namespace std{
+ 	using ::sprintf;
+ 	using ::sscanf;
+ 	using ::tmpfile;
++#if _GLIBCXX_USE_TMPNAM
+ 	using ::tmpnam;
++#endif
+ 	using ::ungetc;
+ 	using ::vfprintf;
+ 	using ::vprintf;
+-- 
+2.20.1
+

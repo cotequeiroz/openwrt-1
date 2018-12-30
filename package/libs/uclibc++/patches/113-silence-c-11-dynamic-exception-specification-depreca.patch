@@ -1,0 +1,831 @@
+From f1f6d566c93d6491e291044ddec2fd19d4ac0662 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Mon, 1 Oct 2018 21:39:02 +0200
+Subject: [PATCH] *: silence c++11 dynamic exception specification deprecation
+
+warning: dynamic exception specifications are deprecated in C++11 [-Wdeprecated]
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/basic_definitions | 22 ++++++++++++++++++++++
+ include/exception         | 16 ++++++++--------
+ include/functional        |  8 ++++----
+ include/ios               |  2 +-
+ include/iterator          | 14 +++++++-------
+ include/locale            | 10 +++++-----
+ include/memory            | 34 +++++++++++++++++-----------------
+ include/new               | 32 ++++++++++++++++----------------
+ include/stdexcept         | 24 ++++++++++++------------
+ include/typeinfo          |  8 ++++----
+ include/unwind-cxx.h      | 16 ++++++++--------
+ src/del_op.cpp            |  2 +-
+ src/del_opnt.cpp          |  2 +-
+ src/del_ops.cpp           |  2 +-
+ src/del_opv.cpp           |  2 +-
+ src/del_opvnt.cpp         |  2 +-
+ src/del_opvs.cpp          |  2 +-
+ src/eh_alloc.cpp          |  8 ++++----
+ src/eh_globals.cpp        |  4 ++--
+ src/exception.cpp         |  6 +++---
+ src/new_handler.cpp       |  2 +-
+ src/new_op.cpp            |  3 ++-
+ src/new_opnt.cpp          |  2 +-
+ src/new_opv.cpp           |  2 +-
+ src/new_opvnt.cpp         |  2 +-
+ src/stdexcept.cpp         |  6 +++---
+ src/typeinfo.cpp          |  4 ++--
+ 27 files changed, 130 insertions(+), 107 deletions(-)
+
+diff --git a/include/basic_definitions b/include/basic_definitions
+index d4b6cd5..9936563 100644
+--- a/include/basic_definitions
++++ b/include/basic_definitions
+@@ -39,6 +39,28 @@
+ #define __UCLIBCXX_NORETURN
+ #endif
+ 
++#ifdef __GCC__
++# ifndef _UCXX_NOTHROW
++#  ifndef __cplusplus
++#   define _UCXX_NOTHROW __attribute__((__nothrow__))
++#  endif
++# endif
++#endif
++#ifdef __cplusplus
++# if __cplusplus >= 201103L
++#  define _UCXX_NOEXCEPT noexcept
++#  define _UCXX_USE_NOEXCEPT noexcept
++#  define _UCXX_THROW(_EXCEPTION)
++# else
++#  define _UCXX_NOEXCEPT
++#  define _UCXX_USE_NOEXCEPT throw()
++#  define _UCXX_THROW(_EXCEPTION) throw(_EXCEPTION)
++# endif
++# ifndef _UCXX_NOTHROW
++#  define _UCXX_NOTHROW _UCXX_USE_NOEXCEPT
++# endif
++#endif
++
+ #ifdef __UCLIBCXX_HAS_TLS__
+ 	#define __UCLIBCXX_TLS __thread
+ #else
+diff --git a/include/exception b/include/exception
+index bdf393e..0cccc9c 100644
+--- a/include/exception
++++ b/include/exception
+@@ -54,11 +54,11 @@ namespace std
+   class exception
+   {
+   public:
+-    exception() throw() { }
+-    virtual ~exception() throw();
++    exception() _UCXX_NOTHROW { }
++    virtual ~exception() _UCXX_NOTHROW;
+     /** Returns a C-style character string describing the general cause
+      *  of the current error.  */
+-    virtual const char* what() const throw();
++    virtual const char* what() const _UCXX_NOTHROW;
+   };
+ 
+   /** If an %exception is thrown which is not listed in a function's
+@@ -66,10 +66,10 @@ namespace std
+   class bad_exception : public exception
+   {
+   public:
+-    bad_exception() throw() { }
++    bad_exception() _UCXX_USE_NOEXCEPT { }
+     // This declaration is not useless:
+     // http://gcc.gnu.org/onlinedocs/gcc-3.0.2/gcc_6.html#SEC118
+-    virtual ~bad_exception() throw();
++    virtual ~bad_exception() _UCXX_USE_NOEXCEPT;
+   };
+ 
+   /// If you write a replacement %terminate handler, it must be of this type.
+@@ -78,13 +78,13 @@ namespace std
+   typedef void (*unexpected_handler) ();
+ 
+   /// Takes a new handler function as an argument, returns the old function.
+-  terminate_handler set_terminate(terminate_handler) throw();
++  terminate_handler set_terminate(terminate_handler) _UCXX_USE_NOEXCEPT;
+   /** The runtime will call this function if %exception handling must be
+    *  abandoned for any reason.  */
+   void terminate() __UCLIBCXX_NORETURN;
+ 
+   /// Takes a new handler function as an argument, returns the old function.
+-  unexpected_handler set_unexpected(unexpected_handler) throw();
++  unexpected_handler set_unexpected(unexpected_handler) _UCXX_USE_NOEXCEPT;
+   /** The runtime will call this function if an %exception is thrown which
+    *  violates the function's %exception specification.  */
+   void unexpected() __UCLIBCXX_NORETURN;
+@@ -99,7 +99,7 @@ namespace std
+    *  2:  "When @c uncaught_exception() is true, throwing an %exception can
+    *  result in a call of @c terminate() (15.5.1)."
+    */
+-  bool uncaught_exception() throw();
++  bool uncaught_exception() _UCXX_USE_NOEXCEPT;
+ } // namespace std
+ 
+ namespace __gnu_cxx
+diff --git a/include/functional b/include/functional
+index b7932e2..ae9ed4b 100644
+--- a/include/functional
++++ b/include/functional
+@@ -137,25 +137,25 @@ namespace std{
+ 	};
+ 
+ 	template <class T> struct _UCXXEXPORT greater : binary_function<T,T,bool>{
+-		bool operator()(const T& x, const T& y) const{
++		bool operator()(const T& x, const T& y) const _UCXX_NOTHROW {
+ 			return (x > y);
+ 		}
+ 	};
+ 
+ 	template <class T> struct _UCXXEXPORT less : binary_function<T,T,bool>{
+-		bool operator()(const T& x, const T& y) const{
++		bool operator()(const T& x, const T& y) const _UCXX_NOTHROW {
+ 			return (x < y);
+ 		}
+ 	};
+ 
+ 	template <class T> struct _UCXXEXPORT greater_equal : binary_function<T,T,bool>{
+-		bool operator()(const T& x, const T& y) const{
++		bool operator()(const T& x, const T& y) const _UCXX_NOTHROW {
+ 			return (x >= y);
+ 		}
+ 	};
+ 
+ 	template <class T> struct _UCXXEXPORT less_equal : binary_function<T,T,bool>{
+-		bool operator()(const T& x, const T& y) const{
++		bool operator()(const T& x, const T& y) const _UCXX_NOTHROW {
+ 			return (x <= y);
+ 		}
+ 	};
+diff --git a/include/ios b/include/ios
+index 63dc4ed..31f2211 100644
+--- a/include/ios
++++ b/include/ios
+@@ -40,7 +40,7 @@ namespace std{
+ 		public:
+ 			explicit failure(const std::string&) { }
+ 			explicit failure() { }
+-			virtual const char* what() const throw() {
++			virtual const char* what() const _UCXX_USE_NOEXCEPT {
+ 				return "std::ios_base failure exception";
+ 			}
+ 		};
+diff --git a/include/iterator b/include/iterator
+index b3d81b2..32d64aa 100644
+--- a/include/iterator
++++ b/include/iterator
+@@ -145,10 +145,10 @@ namespace std{
+ 			charT operator*() { return val; }
+ 		};
+ 
+-		istreambuf_iterator() throw() : sbuf(0) { }
+-		istreambuf_iterator(istream_type& s) throw() : sbuf(s.rdbuf()) { }
+-		istreambuf_iterator(streambuf_type* s) throw() : sbuf(s) { }
+-		istreambuf_iterator(const proxy& p) throw() : sbuf(&p.buf) { }
++		istreambuf_iterator() _UCXX_USE_NOEXCEPT : sbuf(0) { }
++		istreambuf_iterator(istream_type& s) _UCXX_USE_NOEXCEPT : sbuf(s.rdbuf()) { }
++		istreambuf_iterator(streambuf_type* s) _UCXX_USE_NOEXCEPT : sbuf(s) { }
++		istreambuf_iterator(const proxy& p) _UCXX_USE_NOEXCEPT : sbuf(&p.buf) { }
+ 
+ 		charT operator*() const{
+ 			return sbuf->sgetc();
+@@ -196,8 +196,8 @@ namespace std{
+ 		typedef basic_streambuf<charT,traits> streambuf_type;
+ 		typedef basic_ostream<charT,traits>   ostream_type;
+ 	public:
+-		ostreambuf_iterator(ostream_type& s) throw() : sbuf(s.rdbuf()), f(false) { }
+-		ostreambuf_iterator(streambuf_type* s) throw() : sbuf(s), f(false) { }
++		ostreambuf_iterator(ostream_type& s) _UCXX_USE_NOEXCEPT : sbuf(s.rdbuf()), f(false) { }
++		ostreambuf_iterator(streambuf_type* s) _UCXX_USE_NOEXCEPT : sbuf(s), f(false) { }
+ 		ostreambuf_iterator& operator=(charT c){
+ 			if(failed() == false){
+ 				if(sbuf->sputc(c) == traits::eof()){
+@@ -211,7 +211,7 @@ namespace std{
+ 		}
+ 		ostreambuf_iterator& operator++() { return *this; }
+ 		ostreambuf_iterator operator++(int) { return *this; }
+-		bool failed() const throw(){
++		bool failed() const _UCXX_USE_NOEXCEPT{
+ 			return f;
+ 		}
+ 
+diff --git a/include/locale b/include/locale
+index 96e6bc9..ed4dfa3 100644
+--- a/include/locale
++++ b/include/locale
+@@ -42,21 +42,21 @@ namespace std{
+ 		all = collate | ctype | monetary | numeric | time  | messages;
+ 
+ 		// construct/copy/destroy:
+-		locale() throw(){
++		locale() _UCXX_USE_NOEXCEPT{
+ 			return;
+ 		}
+-		locale(const locale& other) throw(){
++		locale(const locale& other) _UCXX_USE_NOEXCEPT{
+ 			(void)other;
+ 			return;
+ 		}
+-		locale(const char *) throw(){
++		locale(const char *) _UCXX_USE_NOEXCEPT{
+ 			return;
+ 		}
+-		~locale() throw(){
++		~locale() _UCXX_USE_NOEXCEPT{
+ 			return;
+ 		}
+ 
+-		const locale& operator=(const locale&) throw(){
++		const locale& operator=(const locale&) _UCXX_USE_NOEXCEPT{
+ 			return *this;
+ 		}
+ 		std::string name() const { return "C"; }
+diff --git a/include/memory b/include/memory
+index 2a7ce8c..9ce6559 100644
+--- a/include/memory
++++ b/include/memory
+@@ -57,9 +57,9 @@ public:
+ 	pointer address(reference r) const { return &r; }
+ 	const_pointer address(const_reference r) const { return &r; }
+ 	
+-	allocator() throw(){}
+-	template <class U> allocator(const allocator<U>& ) throw();
+-	~allocator() throw(){}
++	allocator() _UCXX_USE_NOEXCEPT{}
++	template <class U> allocator(const allocator<U>& ) _UCXX_USE_NOEXCEPT;
++	~allocator() _UCXX_USE_NOEXCEPT{}
+ 
+ 	//Space for n Ts
+ 	pointer allocate(size_type n, typename allocator<void>::const_pointer = 0){
+@@ -73,7 +73,7 @@ public:
+ 	void construct(pointer p, const T& val) { new((void*)p) T(val); }
+ 	void destroy(pointer p){ ((T*)p)->~T(); }	//Call destructor
+ 
+-	size_type max_size() const throw();
++	size_type max_size() const _UCXX_USE_NOEXCEPT;
+ 	template<class U> struct rebind { typedef allocator<U> other; };
+ 
+ };
+@@ -128,13 +128,13 @@ public:
+ 
+ 	typedef T element_type;
+ 
+-	explicit auto_ptr(T* p =0) throw() : object(p){  }
+-	auto_ptr(auto_ptr& p) throw() : object(p.release()){ }
+-	auto_ptr(auto_ptr_ref<T> r) throw() : object(r.p){
++	explicit auto_ptr(T* p =0) _UCXX_USE_NOEXCEPT : object(p){  }
++	auto_ptr(auto_ptr& p) _UCXX_USE_NOEXCEPT : object(p.release()){ }
++	auto_ptr(auto_ptr_ref<T> r) _UCXX_USE_NOEXCEPT : object(r.p){
+ 		r.p = 0;
+ 	}
+-	template<class Y> auto_ptr(auto_ptr<Y>& p) throw() : object(p.release()){ }
+-	auto_ptr& operator=(auto_ptr& p) throw(){
++	template<class Y> auto_ptr(auto_ptr<Y>& p) _UCXX_USE_NOEXCEPT : object(p.release()){ }
++	auto_ptr& operator=(auto_ptr& p) _UCXX_USE_NOEXCEPT{
+ 		if(&p == this){
+ 			return *this;
+ 		}
+@@ -142,7 +142,7 @@ public:
+ 		object = p.release();
+ 		return *this;
+ 	}
+-	template<class Y> auto_ptr& operator=(auto_ptr<Y>& p) throw(){
++	template<class Y> auto_ptr& operator=(auto_ptr<Y>& p) _UCXX_USE_NOEXCEPT{
+ 		if(&p == this){
+ 			return *this;
+ 		}
+@@ -154,33 +154,33 @@ public:
+ 		delete object;
+ 	}
+ 
+-	T& operator*() const throw(){
++	T& operator*() const _UCXX_USE_NOEXCEPT{
+ 		return *object;
+ 	}
+-	T* operator->() const throw(){
++	T* operator->() const _UCXX_USE_NOEXCEPT{
+ 		return object;
+ 	}
+-	T* get() const throw(){
++	T* get() const _UCXX_USE_NOEXCEPT{
+ 		return object;
+ 	}
+-	T* release() throw(){
++	T* release() _UCXX_USE_NOEXCEPT{
+ 		T * temp(object);
+ 		object = 0;
+ 		return temp;
+ 	}
+-	void reset(T * p=0) throw(){
++	void reset(T * p=0) _UCXX_USE_NOEXCEPT{
+ 		if(p != object){
+ 			delete object;
+ 			object = p;
+ 		}
+ 	}
+-	template<class Y> operator auto_ptr_ref<Y>() throw(){
++	template<class Y> operator auto_ptr_ref<Y>() _UCXX_USE_NOEXCEPT{
+ 		auto_ptr_ref<Y> retval;
+ 		retval.p = object;
+ 		object = 0;
+ 		return retval;
+ 	}
+-	template<class Y> operator auto_ptr<Y>() throw(){
++	template<class Y> operator auto_ptr<Y>() _UCXX_USE_NOEXCEPT{
+ 		auto_ptr<Y> retval(object);
+ 		object = 0;
+ 		return retval;
+diff --git a/include/new b/include/new
+index 0949a09..6214b11 100644
+--- a/include/new
++++ b/include/new
+@@ -33,36 +33,36 @@ namespace std{
+ 	extern const nothrow_t nothrow;
+ 
+ 	typedef void (*new_handler)();
+-	_UCXXEXPORT new_handler set_new_handler(new_handler new_p) throw();
++	_UCXXEXPORT new_handler set_new_handler(new_handler new_p) _UCXX_USE_NOEXCEPT;
+ }
+ 
+ 
+-_UCXXEXPORT void* operator new(std::size_t numBytes) throw(std::bad_alloc);
+-_UCXXEXPORT void operator delete(void* ptr) throw();
++_UCXXEXPORT void* operator new(std::size_t numBytes) _UCXX_THROW(std::bad_alloc);
++_UCXXEXPORT void operator delete(void* ptr) _UCXX_USE_NOEXCEPT;
+ #if __cpp_sized_deallocation
+-_UCXXEXPORT void operator delete(void* ptr, std::size_t) throw();
++_UCXXEXPORT void operator delete(void* ptr, std::size_t) _UCXX_USE_NOEXCEPT;
+ #endif
+ 
+-_UCXXEXPORT void* operator new[](std::size_t numBytes) throw(std::bad_alloc);
+-_UCXXEXPORT void operator delete[](void * ptr) throw();
++_UCXXEXPORT void* operator new[](std::size_t numBytes) _UCXX_THROW(std::bad_alloc);
++_UCXXEXPORT void operator delete[](void * ptr) _UCXX_USE_NOEXCEPT;
+ #if __cpp_sized_deallocation
+-_UCXXEXPORT void operator delete[](void * ptr, std::size_t) throw();
++_UCXXEXPORT void operator delete[](void * ptr, std::size_t) _UCXX_USE_NOEXCEPT;
+ #endif
+ 
+ #ifndef NO_NOTHROW
+-_UCXXEXPORT void* operator new(std::size_t numBytes, const std::nothrow_t& ) throw();
+-_UCXXEXPORT void operator delete(void* ptr, const std::nothrow_t& ) throw();
++_UCXXEXPORT void* operator new(std::size_t numBytes, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT;
++_UCXXEXPORT void operator delete(void* ptr, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT;
+ 
+-_UCXXEXPORT void* operator new[](std::size_t numBytes, const std::nothrow_t& ) throw();
+-_UCXXEXPORT void operator delete[](void* ptr, const std::nothrow_t& ) throw();
++_UCXXEXPORT void* operator new[](std::size_t numBytes, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT;
++_UCXXEXPORT void operator delete[](void* ptr, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT;
+ #endif
+ 
+ 	/* Placement operators */
+-inline void* operator new(std::size_t, void* ptr) throw() {return ptr; }
+-inline void operator delete(void* , void *) throw() { }
+-	
+-inline void* operator new[](std::size_t, void *p) throw() { return p; }
+-inline void operator delete[](void* , void *) throw() {}
++inline void* operator new(std::size_t, void* ptr) _UCXX_USE_NOEXCEPT {return ptr; }
++inline void operator delete(void* , void *) _UCXX_USE_NOEXCEPT { }
++
++inline void* operator new[](std::size_t, void *p) _UCXX_USE_NOEXCEPT { return p; }
++inline void operator delete[](void* , void *) _UCXX_USE_NOEXCEPT {}
+ 
+ #pragma GCC visibility pop
+ 
+diff --git a/include/stdexcept b/include/stdexcept
+index 7557f24..76c3870 100644
+--- a/include/stdexcept
++++ b/include/stdexcept
+@@ -37,11 +37,11 @@ class _UCXXEXPORT logic_error : public exception {
+ protected:
+ 	string mstring;
+ public:
+-	logic_error() throw();
++	logic_error() _UCXX_USE_NOEXCEPT;
+ 	logic_error(const string& what_arg);
+ 
+-	virtual ~logic_error() throw() {}
+-	virtual const char * what() const throw();
++	virtual ~logic_error() _UCXX_USE_NOEXCEPT {}
++	virtual const char * what() const _UCXX_USE_NOEXCEPT;
+ 
+ };	
+ 
+@@ -49,28 +49,28 @@ class _UCXXEXPORT domain_error : public logic_error {
+ public:
+ 	domain_error() : logic_error() {}
+ 	domain_error(const string& what_arg) : logic_error(what_arg) {}
+-	virtual ~domain_error() throw() {}
++	virtual ~domain_error() _UCXX_USE_NOEXCEPT {}
+ };
+ 
+ class _UCXXEXPORT invalid_argument : public logic_error {
+ public:
+ 	invalid_argument() : logic_error(){}
+ 	invalid_argument(const string& what_arg) : logic_error(what_arg){}
+-	virtual ~invalid_argument() throw() {}
++	virtual ~invalid_argument() _UCXX_USE_NOEXCEPT {}
+ };
+ 
+ class _UCXXEXPORT length_error : public logic_error {
+ public:
+ 	length_error() : logic_error(){}
+ 	length_error(const string& what_arg) : logic_error(what_arg){}
+-	virtual ~length_error() throw() {}
++	virtual ~length_error() _UCXX_USE_NOEXCEPT {}
+ };
+ 
+ class _UCXXEXPORT out_of_range : public logic_error{
+ public:
+ 	out_of_range();
+ 	out_of_range(const string & what_arg);
+-	virtual ~out_of_range() throw() {}
++	virtual ~out_of_range() _UCXX_USE_NOEXCEPT {}
+ 
+ };
+ 
+@@ -81,15 +81,15 @@ public:
+ 	runtime_error();
+ 	runtime_error(const string& what_arg);
+ 
+-	virtual ~runtime_error() throw() {}
+-	virtual const char * what() const throw();
++	virtual ~runtime_error() _UCXX_USE_NOEXCEPT {}
++	virtual const char * what() const _UCXX_USE_NOEXCEPT;
+ };
+ 
+ class _UCXXEXPORT range_error : public runtime_error{
+ public:
+ 	range_error() : runtime_error(){}
+ 	range_error(const string& what_arg) : runtime_error(what_arg) {}
+-	virtual ~range_error() throw(){ }
++	virtual ~range_error() _UCXX_USE_NOEXCEPT{ }
+ };
+ 
+ 
+@@ -97,14 +97,14 @@ class _UCXXEXPORT overflow_error : public runtime_error{
+ public:
+ 	overflow_error() : runtime_error(){}
+ 	overflow_error(const string& what_arg) : runtime_error(what_arg) {}
+-	virtual ~overflow_error() throw(){}
++	virtual ~overflow_error() _UCXX_USE_NOEXCEPT{}
+ };
+ 
+ class _UCXXEXPORT underflow_error : public runtime_error{
+ public:
+ 	underflow_error() : runtime_error(){}
+ 	underflow_error(const string& what_arg) : runtime_error(what_arg) {}
+-	virtual ~underflow_error() throw(){}
++	virtual ~underflow_error() _UCXX_USE_NOEXCEPT{}
+ };
+ 
+ 
+diff --git a/include/typeinfo b/include/typeinfo
+index 88a2639..7863af2 100644
+--- a/include/typeinfo
++++ b/include/typeinfo
+@@ -137,20 +137,20 @@ namespace std
+   class bad_cast : public exception 
+   {
+   public:
+-    bad_cast() throw() { }
++    bad_cast() _UCXX_USE_NOEXCEPT { }
+     // This declaration is not useless:
+     // http://gcc.gnu.org/onlinedocs/gcc-3.0.2/gcc_6.html#SEC118
+-    virtual ~bad_cast() throw();
++    virtual ~bad_cast() _UCXX_USE_NOEXCEPT;
+   };
+   
+   /** If you use a NULL pointer in a @c typeid expression, this is thrown.  */
+   class bad_typeid : public exception 
+   {
+   public:
+-    bad_typeid () throw() { }
++    bad_typeid () _UCXX_USE_NOEXCEPT { }
+     // This declaration is not useless:
+     // http://gcc.gnu.org/onlinedocs/gcc-3.0.2/gcc_6.html#SEC118
+-    virtual ~bad_typeid() throw();
++    virtual ~bad_typeid() _UCXX_USE_NOEXCEPT;
+   };
+ } // namespace std
+ 
+diff --git a/include/unwind-cxx.h b/include/unwind-cxx.h
+index e001343..999aba3 100644
+--- a/include/unwind-cxx.h
++++ b/include/unwind-cxx.h
+@@ -140,18 +140,18 @@ struct __cxa_eh_globals
+ // either of the following functions.  The "fast" version assumes at least
+ // one prior call of __cxa_get_globals has been made from the current
+ // thread, so no initialization is necessary.
+-extern "C" __cxa_eh_globals *__cxa_get_globals () throw();
+-extern "C" __cxa_eh_globals *__cxa_get_globals_fast () throw();
++extern "C" __cxa_eh_globals *__cxa_get_globals () _UCXX_USE_NOEXCEPT;
++extern "C" __cxa_eh_globals *__cxa_get_globals_fast () _UCXX_USE_NOEXCEPT;
+ 
+ // Allocate memory for the primary exception plus the thrown object.
+-extern "C" void *__cxa_allocate_exception(std::size_t thrown_size) throw();
++extern "C" void *__cxa_allocate_exception(std::size_t thrown_size) _UCXX_USE_NOEXCEPT;
+ // Allocate memory for dependent exception.
+-extern "C" __cxa_dependent_exception *__cxa_allocate_dependent_exception() throw();
++extern "C" __cxa_dependent_exception *__cxa_allocate_dependent_exception() _UCXX_USE_NOEXCEPT;
+ 
+ // Free the space allocated for the primary exception.
+-extern "C" void __cxa_free_exception(void *thrown_exception) throw();
++extern "C" void __cxa_free_exception(void *thrown_exception) _UCXX_USE_NOEXCEPT;
+ // Free the space allocated for the dependent exception.
+-extern "C" void __cxa_free_dependent_exception(__cxa_dependent_exception *dependent_exception) throw();
++extern "C" void __cxa_free_dependent_exception(__cxa_dependent_exception *dependent_exception) _UCXX_USE_NOEXCEPT;
+ 
+ // Throw the exception.
+ extern "C" void __cxa_throw (void *thrown_exception,
+@@ -160,7 +160,7 @@ extern "C" void __cxa_throw (void *thrown_exception,
+      __attribute__((noreturn));
+ 
+ // Used to implement exception handlers.
+-extern "C" void *__cxa_begin_catch (void *) throw();
++extern "C" void *__cxa_begin_catch (void *) _UCXX_USE_NOEXCEPT;
+ extern "C" void __cxa_end_catch ();
+ extern "C" void __cxa_rethrow () __attribute__((noreturn));
+ 
+@@ -177,7 +177,7 @@ extern "C" void __cxa_call_unexpected (void *) __attribute__((noreturn));
+ 
+ // Invokes given handler, dying appropriately if the user handler was
+ // so inconsiderate as to return.
+-extern void __terminate(std::terminate_handler) throw () __attribute__((noreturn));
++extern void __terminate(std::terminate_handler) _UCXX_USE_NOEXCEPT __attribute__((noreturn));
+ extern void __unexpected(std::unexpected_handler) __attribute__((noreturn));
+ 
+ // The current installed user handlers.
+diff --git a/src/del_op.cpp b/src/del_op.cpp
+index f5a3695..9485cee 100644
+--- a/src/del_op.cpp
++++ b/src/del_op.cpp
+@@ -21,6 +21,6 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void operator delete(void* ptr) throw(){
++_UCXXEXPORT void operator delete(void* ptr) _UCXX_USE_NOEXCEPT{
+ 	free(ptr);
+ }
+diff --git a/src/del_opnt.cpp b/src/del_opnt.cpp
+index 96cb03b..4825912 100644
+--- a/src/del_opnt.cpp
++++ b/src/del_opnt.cpp
+@@ -22,7 +22,7 @@
+ #include <func_exception>
+ 
+ #ifndef NO_NOTHROW
+-_UCXXEXPORT void operator delete(void* ptr, const std::nothrow_t& ) throw() {
++_UCXXEXPORT void operator delete(void* ptr, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT {
+ 	free(ptr);
+ }
+ #endif
+diff --git a/src/del_ops.cpp b/src/del_ops.cpp
+index e292b03..b914fc5 100644
+--- a/src/del_ops.cpp
++++ b/src/del_ops.cpp
+@@ -22,6 +22,6 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void operator delete(void* ptr, std::size_t) throw(){
++_UCXXEXPORT void operator delete(void* ptr, std::size_t) _UCXX_USE_NOEXCEPT{
+ 	::operator delete (ptr);
+ }
+diff --git a/src/del_opv.cpp b/src/del_opv.cpp
+index 028e86f..deaad78 100644
+--- a/src/del_opv.cpp
++++ b/src/del_opv.cpp
+@@ -21,6 +21,6 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void operator delete[](void * ptr) throw(){
++_UCXXEXPORT void operator delete[](void * ptr) _UCXX_USE_NOEXCEPT{
+ 	free(ptr);
+ }
+diff --git a/src/del_opvnt.cpp b/src/del_opvnt.cpp
+index f2a2a36..71b7631 100644
+--- a/src/del_opvnt.cpp
++++ b/src/del_opvnt.cpp
+@@ -22,7 +22,7 @@
+ #include <func_exception>
+ 
+ #ifndef NO_NOTHROW
+-_UCXXEXPORT void operator delete[](void* ptr, const std::nothrow_t& ) throw(){
++_UCXXEXPORT void operator delete[](void* ptr, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT{
+ 	free(ptr);
+ }
+ #endif
+diff --git a/src/del_opvs.cpp b/src/del_opvs.cpp
+index 1c92d1f..53ab7cc 100644
+--- a/src/del_opvs.cpp
++++ b/src/del_opvs.cpp
+@@ -22,6 +22,6 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void operator delete[](void * ptr, std::size_t) throw(){
++_UCXXEXPORT void operator delete[](void * ptr, std::size_t) _UCXX_USE_NOEXCEPT{
+ 	::operator delete[] (ptr);
+ }
+diff --git a/src/eh_alloc.cpp b/src/eh_alloc.cpp
+index cdf28e0..270ef10 100644
+--- a/src/eh_alloc.cpp
++++ b/src/eh_alloc.cpp
+@@ -27,7 +27,7 @@
+ namespace __cxxabiv1
+ {
+ 
+-extern "C" void * __cxa_allocate_exception(std::size_t thrown_size) throw(){
++extern "C" void * __cxa_allocate_exception(std::size_t thrown_size) _UCXX_USE_NOEXCEPT{
+ 	void *e;
+ 	// The sizeof crap is required by Itanium ABI because we need to
+ 	// provide space for accounting information which is implementation
+@@ -40,12 +40,12 @@ extern "C" void * __cxa_allocate_exception(std::size_t thrown_size) throw(){
+ 	return (void *)((unsigned char *)e + sizeof(__cxa_refcounted_exception));
+ }
+ 
+-extern "C" void __cxa_free_exception(void *vptr) throw(){
++extern "C" void __cxa_free_exception(void *vptr) _UCXX_USE_NOEXCEPT{
+ 	free( (char *)(vptr) - sizeof(__cxa_refcounted_exception) );
+ }
+ 
+ 
+-extern "C" __cxa_dependent_exception * __cxa_allocate_dependent_exception() throw(){
++extern "C" __cxa_dependent_exception * __cxa_allocate_dependent_exception() _UCXX_USE_NOEXCEPT{
+ 	__cxa_dependent_exception *retval;
+ 	// The sizeof crap is required by Itanium ABI because we need to
+ 	// provide space for accounting information which is implementation
+@@ -58,7 +58,7 @@ extern "C" __cxa_dependent_exception * __cxa_allocate_dependent_exception() thro
+ 	return retval;
+ }
+ 
+-extern "C" void __cxa_free_dependent_exception(__cxa_dependent_exception *vptr) throw(){
++extern "C" void __cxa_free_dependent_exception(__cxa_dependent_exception *vptr) _UCXX_USE_NOEXCEPT{
+ 	free( (char *)(vptr) );
+ }
+ 
+diff --git a/src/eh_globals.cpp b/src/eh_globals.cpp
+index 38d4583..9915433 100644
+--- a/src/eh_globals.cpp
++++ b/src/eh_globals.cpp
+@@ -31,11 +31,11 @@ namespace __cxxabiv1{
+ 
+ static __UCLIBCXX_TLS __cxa_eh_globals eh_globals;
+ 
+-extern "C" __cxa_eh_globals* __cxa_get_globals() throw(){
++extern "C" __cxa_eh_globals* __cxa_get_globals() _UCXX_USE_NOEXCEPT{
+ 	return &eh_globals;
+ }
+ 
+-extern "C" __cxa_eh_globals* __cxa_get_globals_fast() throw(){
++extern "C" __cxa_eh_globals* __cxa_get_globals_fast() _UCXX_USE_NOEXCEPT{
+ 	return &eh_globals;
+ }
+ 
+diff --git a/src/exception.cpp b/src/exception.cpp
+index 82021dd..5f4e896 100644
+--- a/src/exception.cpp
++++ b/src/exception.cpp
+@@ -33,15 +33,15 @@ namespace std{
+ 	//We are providing our own versions to be sneaky
+ 
+ 
+-	_UCXXEXPORT exception::~exception() throw(){
++	_UCXXEXPORT exception::~exception() _UCXX_USE_NOEXCEPT{
+ 		//Empty function
+ 	}
+ 
+-	_UCXXEXPORT const char* exception::what() const throw(){
++	_UCXXEXPORT const char* exception::what() const _UCXX_USE_NOEXCEPT{
+ 		return __std_exception_what_value;
+ 	}
+ 
+-	_UCXXEXPORT bad_exception::~bad_exception() throw(){
++	_UCXXEXPORT bad_exception::~bad_exception() _UCXX_USE_NOEXCEPT{
+ 
+ 	}
+ 
+diff --git a/src/new_handler.cpp b/src/new_handler.cpp
+index 1d85ee3..a6efb9c 100644
+--- a/src/new_handler.cpp
++++ b/src/new_handler.cpp
+@@ -24,7 +24,7 @@ const std::nothrow_t std::nothrow = { };
+ //Name selected to be compatable with g++ code
+ std::new_handler __new_handler;
+ 
+-_UCXXEXPORT std::new_handler std::set_new_handler(std::new_handler new_p) throw(){
++_UCXXEXPORT std::new_handler std::set_new_handler(std::new_handler new_p) _UCXX_USE_NOEXCEPT{
+ 	std::new_handler retval = __new_handler;
+ 	__new_handler = new_p;
+ 	return retval;
+diff --git a/src/new_op.cpp b/src/new_op.cpp
+index 764eb83..b0d2b78 100644
+--- a/src/new_op.cpp
++++ b/src/new_op.cpp
+@@ -21,7 +21,8 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void* operator new(std::size_t numBytes) throw(std::bad_alloc){
++_UCXXEXPORT void* operator new(std::size_t numBytes) _UCXX_THROW(std::bad_alloc)
++{
+ 	//C++ stardard 5.3.4.8 requires that a valid pointer be returned for
+ 	//a call to new(0). Thus:
+ 	if(numBytes == 0){
+diff --git a/src/new_opnt.cpp b/src/new_opnt.cpp
+index cffce61..c37903e 100644
+--- a/src/new_opnt.cpp
++++ b/src/new_opnt.cpp
+@@ -22,7 +22,7 @@
+ #include <func_exception>
+ 
+ #ifndef NO_NOTHROW
+-_UCXXEXPORT void* operator new(std::size_t numBytes, const std::nothrow_t& ) throw(){
++_UCXXEXPORT void* operator new(std::size_t numBytes, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT{
+ 	return malloc(numBytes);
+ }
+ #endif
+diff --git a/src/new_opv.cpp b/src/new_opv.cpp
+index ef416e0..e39d5e5 100644
+--- a/src/new_opv.cpp
++++ b/src/new_opv.cpp
+@@ -21,7 +21,7 @@
+ #include <cstdlib>
+ #include <func_exception>
+ 
+-_UCXXEXPORT void* operator new[](std::size_t numBytes) throw(std::bad_alloc){
++_UCXXEXPORT void* operator new[](std::size_t numBytes)_UCXX_THROW(std::bad_alloc){
+ 	//C++ stardard 5.3.4.8 requires that a valid pointer be returned for
+ 	//a call to new(0). Thus:
+ 	if(numBytes == 0){
+diff --git a/src/new_opvnt.cpp b/src/new_opvnt.cpp
+index 3ea592a..4874a7f 100644
+--- a/src/new_opvnt.cpp
++++ b/src/new_opvnt.cpp
+@@ -22,7 +22,7 @@
+ #include <func_exception>
+ 
+ #ifndef NO_NOTHROW
+-_UCXXEXPORT void* operator new[](std::size_t numBytes, const std::nothrow_t& ) throw(){
++_UCXXEXPORT void* operator new[](std::size_t numBytes, const std::nothrow_t& ) _UCXX_USE_NOEXCEPT{
+ 	return malloc(numBytes);
+ }
+ #endif
+diff --git a/src/stdexcept.cpp b/src/stdexcept.cpp
+index 90dccc7..b812b6f 100644
+--- a/src/stdexcept.cpp
++++ b/src/stdexcept.cpp
+@@ -24,7 +24,7 @@
+ 
+ namespace std{
+ 
+-	_UCXXEXPORT logic_error::logic_error() throw() : mstring(){
++	_UCXXEXPORT logic_error::logic_error() _UCXX_USE_NOEXCEPT : mstring(){
+ 
+ 	}
+ 
+@@ -32,7 +32,7 @@ namespace std{
+ 
+ 	}
+ 
+-	_UCXXEXPORT const char * logic_error::what() const throw(){
++	_UCXXEXPORT const char * logic_error::what() const _UCXX_USE_NOEXCEPT{
+ 		return mstring.c_str();
+ 	}
+ 
+@@ -53,7 +53,7 @@ namespace std{
+ 
+ 	}
+ 
+-	_UCXXEXPORT const char * runtime_error::what() const throw(){
++	_UCXXEXPORT const char * runtime_error::what() const _UCXX_USE_NOEXCEPT{
+ 		return mstring.c_str();
+ 	}
+ 
+diff --git a/src/typeinfo.cpp b/src/typeinfo.cpp
+index b8ea301..c9f9d23 100644
+--- a/src/typeinfo.cpp
++++ b/src/typeinfo.cpp
+@@ -21,11 +21,11 @@
+ 
+ namespace std{
+ 
+-	_UCXXEXPORT bad_cast::~bad_cast() throw(){
++	_UCXXEXPORT bad_cast::~bad_cast() _UCXX_USE_NOEXCEPT{
+ 
+ 	}
+ 
+-	_UCXXEXPORT bad_typeid::~bad_typeid() throw(){
++	_UCXXEXPORT bad_typeid::~bad_typeid() _UCXX_USE_NOEXCEPT{
+ 
+ 	}
+ 
+-- 
+2.20.1
+
