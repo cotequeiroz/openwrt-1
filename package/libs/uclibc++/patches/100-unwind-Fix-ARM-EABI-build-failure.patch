@@ -1,0 +1,71 @@
+From cf73cb907c03ca2fb22bfe7fe2f732c10714b9ad Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@openwrt.org>
+Date: Thu, 14 Jun 2012 13:02:14 +0200
+Subject: [PATCH] unwind: Fix ARM EABI build failure
+
+uClibc++ current does not build using an ARM EABI toolchain with the
+following build failure:
+eh_alloc.cpp
+In file included from ../include/basic_definitions:21:0,
+                 from ../include/cstdlib:20,
+                 from eh_alloc.cpp:20:
+../include/system_configuration.h:17:0: warning: "__WARNINGS__" redefined [enabled by default]
+/opt/toolchains/armeabi-uclibc-std-0.9.30.2-gcc-4.6.0-binutils-2.20.1/arm-linux-uclibcgnueabi/sysroot/usr/include/bits/uClibc_config.h:223:0: note: this is the location of the previous definition
+In file included from eh_alloc.cpp:25:0:
+../include/unwind-cxx.h:176:36: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:177:36: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:178:35: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:179:41: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:180:40: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:181:39: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:182:38: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+../include/unwind-cxx.h:183:37: error: ISO C++ forbids casting to an array type '_Unwind_Exception_Class'
+make[1]: *** [eh_alloc.o] Error 1
+make[1]: Leaving directory `/home/florian/dev/uclibcxx/uClibc++/src'
+
+Workaround this by direclty using the string "GNUCC++".
+
+Signed-off-by: Felix Fietkau <nbd@openwrt.org>
+Signed-off-by: Florian Fainelli <florian@openwrt.org>
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ ChangeLog            | 3 +++
+ include/unwind-cxx.h | 4 ++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/ChangeLog b/ChangeLog
+index 58b66fa..195caf8 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,6 @@
++0.2.5
++-   unwind: Fix for __ARM_EABI_UNWINDER__
++
+ 0.2.4
+ -   valarray: Fix operator=(const valarray<T>&) DR 630
+ -   valarray: Adjust constness of operator[](size_t)
+diff --git a/include/unwind-cxx.h b/include/unwind-cxx.h
+index 4a8961a..b773259 100644
+--- a/include/unwind-cxx.h
++++ b/include/unwind-cxx.h
+@@ -173,6 +173,7 @@ extern std::unexpected_handler __unexpected_handler;
+ 
+ // This is the exception class we report -- "GNUCC++\0".
+ const _Unwind_Exception_Class __gxx_exception_class
++#ifndef __ARM_EABI_UNWINDER__
+ = ((((((((_Unwind_Exception_Class) 'G' 
+ 	 << 8 | (_Unwind_Exception_Class) 'N')
+ 	<< 8 | (_Unwind_Exception_Class) 'U')
+@@ -181,6 +182,9 @@ const _Unwind_Exception_Class __gxx_exception_class
+      << 8 | (_Unwind_Exception_Class) '+')
+     << 8 | (_Unwind_Exception_Class) '+')
+    << 8 | (_Unwind_Exception_Class) '\0');
++#else
++= "GNUCC++";
++#endif
+ 
+ // GNU C++ personality routine, Version 0.
+ extern "C" _Unwind_Reason_Code __gxx_personality_v0
+-- 
+2.20.1
+

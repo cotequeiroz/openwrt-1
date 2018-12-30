@@ -1,0 +1,27 @@
+From 86d442a589dcfa1910c480d36730cb9c850ea326 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Sat, 5 Mar 2016 21:18:25 +0100
+Subject: [PATCH] cstdio: gets was removed from C11, LWG 2249
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/cstdio | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/cstdio b/include/cstdio
+index aab1283..8f4df27 100644
+--- a/include/cstdio
++++ b/include/cstdio
+@@ -47,7 +47,9 @@ namespace std{
+ 	using ::fwrite;
+ 	using ::getc;
+ 	using ::getchar;
++#if __cplusplus <= 201103L
+ 	using ::gets;
++#endif
+ 	using ::perror;
+ 	using ::printf;
+ 	using ::putc;
+-- 
+2.20.1
+

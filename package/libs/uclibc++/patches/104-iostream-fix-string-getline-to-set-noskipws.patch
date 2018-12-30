@@ -1,0 +1,30 @@
+From 7c90261eb9e5cff4ea3a4e5580e4f2bc7543cb21 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Per=20=C3=98yvind=20Karlsen?= <proyvind@moondrake.org>
+Date: Tue, 28 May 2013 00:38:28 +0200
+Subject: [PATCH] iostream: fix string getline to set noskipws
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Per Øyvind Karlsen <proyvind@moondrake.org>
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/string_iostream | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/string_iostream b/include/string_iostream
+index 4ef3b60..355fd58 100644
+--- a/include/string_iostream
++++ b/include/string_iostream
+@@ -83,7 +83,7 @@ template<class charT, class traits, class Allocator> _UCXXEXPORT basic_istream<c
+ template<class charT, class traits, class Allocator> _UCXXEXPORT basic_istream<charT,traits>&
+ 	getline(basic_istream<charT,traits>& is, basic_string<charT,traits,Allocator>& str, charT delim)
+ {
+-	typename basic_istream<charT,traits>::sentry s(is);
++	typename basic_istream<charT,traits>::sentry s(is, true);
+ 	if(s == false){
+ 		return is;
+ 	}
+-- 
+2.20.1
+

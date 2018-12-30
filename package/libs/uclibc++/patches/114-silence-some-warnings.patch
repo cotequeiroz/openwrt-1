@@ -1,0 +1,109 @@
+From e3c783264d1f11084f25f2fc527b054b524b72d6 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Mon, 1 Oct 2018 22:57:31 +0200
+Subject: [PATCH] *: silence some warnings
+
+in c++-98 mode as well as in c++-11 mode
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/fstream  | 9 +++++----
+ include/ios      | 9 ++++++---
+ include/istream  | 3 ++-
+ include/iterator | 2 +-
+ 4 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/include/fstream b/include/fstream
+index b8dd602..fddfa35 100644
+--- a/include/fstream
++++ b/include/fstream
+@@ -66,9 +66,10 @@ namespace std{
+ 
+ 		//Constructors/destructor:
+ 
+-		_UCXXEXPORT basic_filebuf()	: basic_streambuf<charT, traits>(), fp(0), pbuffer(0), gbuffer(0)
++		_UCXXEXPORT basic_filebuf()
++			: basic_streambuf<charT, traits>(), fp(0), pbuffer(0),
++				gbuffer(0), append(false)
+ 		{
+-			append=false;
+ 			pbuffer = new char_type[__UCLIBCXX_IOSTREAM_BUFSIZE__];
+ 			gbuffer = new char_type[__UCLIBCXX_IOSTREAM_BUFSIZE__];
+ 
+@@ -375,12 +376,12 @@ namespace std{
+ 			if(s == 0 && n == 0){	//Unbuffered
+ 				if(pbuffer !=0){
+ 					delete [] pbuffer;
++					pbuffer = 0;
+ 				}
+ 				if(gbuffer !=0){
+ 					delete [] gbuffer;
++					gbuffer = 0;
+ 				}
+-				pbuffer = 0;
+-				gbuffer = 0;
+ 			}else if(basic_streambuf<charT,traits>::gptr() !=0 && 
+ 				basic_streambuf<charT,traits>::gptr()==basic_streambuf<charT,traits>::egptr())
+ 			{
+diff --git a/include/ios b/include/ios
+index 31f2211..ac6566a 100644
+--- a/include/ios
++++ b/include/ios
+@@ -139,13 +139,15 @@ namespace std{
+ //		long&  iword(int index);
+ //		void*& pword(int index);
+ 
+-		_UCXXEXPORT ~ios_base() { }
+-
+ 		enum event { erase_event, imbue_event, copyfmt_event };
+ 
+ 		typedef void (*event_callback)(event, ios_base&, int index);
+ //		void register_callback(event_call_back fn, int index);
+ 
++		virtual _UCXXEXPORT ~ios_base() {
++			/* would run erase_event callbacks here */
++		}
++
+ 		//We are going to wrap stdio so we don't need implementation of the following:
+ 		inline static bool sync_with_stdio(bool = true) { return true; }
+ 
+@@ -340,7 +342,8 @@ namespace std{
+ 			throw_mask = except;
+ 		}
+ 
+-		explicit _UCXXEXPORT basic_ios(basic_streambuf<charT,traits>* sb) : fill_char(' '), mtied(0), mstreambuf(0){
++		explicit _UCXXEXPORT basic_ios(basic_streambuf<charT,traits>* sb)
++			: fill_char(' '), mtied(0), mstreambuf(0), throw_mask(0) {
+ 			init(sb);
+ 		}
+ 
+diff --git a/include/istream b/include/istream
+index a6fe3de..850ac30 100644
+--- a/include/istream
++++ b/include/istream
+@@ -345,7 +345,8 @@ namespace std{
+ 	{
+ 		bool ok;
+ 	public:
+-		explicit _UCXXEXPORT sentry(basic_istream<charT,traits>& os, bool noskipws = false){
++		explicit _UCXXEXPORT sentry(basic_istream<charT,traits>& os, bool noskipws = false)
++			: ok(false){
+ 			if(os.good() !=0){		//Prepare for output
+ 			}
+ 
+diff --git a/include/iterator b/include/iterator
+index 32d64aa..d65f467 100644
+--- a/include/iterator
++++ b/include/iterator
+@@ -157,7 +157,7 @@ namespace std{
+ 			sbuf->sbumpc();
+ 			return *this;
+ 		}
+-		proxy operator++(int){
++		istreambuf_iterator<charT,traits> operator++(int){
+ 			istreambuf_iterator<charT,traits> tmp = *this;
+ 			sbuf->sbumpc();
+ 			return(tmp);
+-- 
+2.20.1
+

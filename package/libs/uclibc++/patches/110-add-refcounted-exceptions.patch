@@ -1,0 +1,158 @@
+From 2b58f77ee27c60842054fd0e5dd67f5d00e89eb8 Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Fri, 23 Sep 2016 15:56:11 +0200
+Subject: [PATCH] add refcounted exceptions
+
+Fixes bugzilla #8741
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/unwind-cxx.h | 32 +++++++++++++++++++++++++++++++-
+ src/eh_alloc.cpp     | 28 ++++++++++++++++------------
+ tests/newdeltest.cpp |  4 ++--
+ 3 files changed, 49 insertions(+), 15 deletions(-)
+
+diff --git a/include/unwind-cxx.h b/include/unwind-cxx.h
+index b773259..e001343 100644
+--- a/include/unwind-cxx.h
++++ b/include/unwind-cxx.h
+@@ -40,6 +40,14 @@
+ #include <cstddef>
+ #include "unwind.h"
+ 
++#ifdef __aarch64__
++typedef long _Atomic_word;
++#elif defined __cris__
++typedef int _Atomic_word __attribute__ ((__aligned__ (4)));
++#else
++typedef int _Atomic_word;
++#endif
++
+ #pragma GCC visibility push(default)
+ 
+ namespace __cxxabiv1
+@@ -79,6 +87,13 @@ struct __cxa_exception
+   _Unwind_Exception unwindHeader;
+ };
+ 
++struct __cxa_refcounted_exception
++{
++  // Manage this header.
++  _Atomic_word referenceCount;
++  // __cxa_exception must be last, and no padding can be after it.
++  __cxa_exception exc;
++};
+ 
+ // A dependent C++ exception object consists of a header, which is a wrapper
+ // around an unwind object header with additional C++ specific information,
+@@ -162,7 +177,7 @@ extern "C" void __cxa_call_unexpected (void *) __attribute__((noreturn));
+ 
+ // Invokes given handler, dying appropriately if the user handler was
+ // so inconsiderate as to return.
+-extern void __terminate(std::terminate_handler) __attribute__((noreturn));
++extern void __terminate(std::terminate_handler) throw () __attribute__((noreturn));
+ extern void __unexpected(std::unexpected_handler) __attribute__((noreturn));
+ 
+ // The current installed user handlers.
+@@ -210,6 +225,21 @@ __get_exception_header_from_ue (_Unwind_Exception *exc)
+   return reinterpret_cast<__cxa_exception *>(exc + 1) - 1;
+ }
+ 
++// Acquire the C++ refcounted exception header from the C++ object.
++static inline __cxa_refcounted_exception *
++__get_refcounted_exception_header_from_obj (void *ptr)
++{
++  return reinterpret_cast<__cxa_refcounted_exception *>(ptr) - 1;
++}
++
++// Acquire the C++ refcounted exception header from the generic exception
++// header.
++static inline __cxa_refcounted_exception *
++__get_refcounted_exception_header_from_ue (_Unwind_Exception *exc)
++{
++  return reinterpret_cast<__cxa_refcounted_exception *>(exc + 1) - 1;
++}
++
+ } /* namespace __cxxabiv1 */
+ 
+ #pragma GCC visibility pop
+diff --git a/src/eh_alloc.cpp b/src/eh_alloc.cpp
+index 5098196..cdf28e0 100644
+--- a/src/eh_alloc.cpp
++++ b/src/eh_alloc.cpp
+@@ -24,29 +24,32 @@
+ //This is a system-specific header which does all of the error-handling management
+ #include <unwind-cxx.h>
+ 
+-namespace __cxxabiv1{
++namespace __cxxabiv1
++{
+ 
+ extern "C" void * __cxa_allocate_exception(std::size_t thrown_size) throw(){
+-	void *retval;
+-	//The sizeof crap is required by Itanium ABI because we need to provide space for
+-	//accounting information which is implementaion (gcc) specified
+-	retval = malloc (thrown_size + sizeof(__cxa_exception));
+-	if (0 == retval){
++	void *e;
++	// The sizeof crap is required by Itanium ABI because we need to
++	// provide space for accounting information which is implementation
++	// (gcc) defined.
++	e = malloc (thrown_size + sizeof(__cxa_refcounted_exception));
++	if (0 == e){
+ 		std::terminate();
+ 	}
+-	memset (retval, 0, sizeof(__cxa_exception));
+-	return (void *)((unsigned char *)retval + sizeof(__cxa_exception));
++	memset (e, 0, sizeof(__cxa_refcounted_exception));
++	return (void *)((unsigned char *)e + sizeof(__cxa_refcounted_exception));
+ }
+ 
+ extern "C" void __cxa_free_exception(void *vptr) throw(){
+-	free( (char *)(vptr) - sizeof(__cxa_exception) );
++	free( (char *)(vptr) - sizeof(__cxa_refcounted_exception) );
+ }
+ 
+ 
+ extern "C" __cxa_dependent_exception * __cxa_allocate_dependent_exception() throw(){
+ 	__cxa_dependent_exception *retval;
+-	//The sizeof crap is required by Itanium ABI because we need to provide space for
+-	//accounting information which is implementaion (gcc) specified
++	// The sizeof crap is required by Itanium ABI because we need to
++	// provide space for accounting information which is implementation
++	// (gcc) defined.
+ 	retval = static_cast<__cxa_dependent_exception*>(malloc (sizeof(__cxa_dependent_exception)));
+ 	if (0 == retval){
+ 		std::terminate();
+@@ -58,4 +61,5 @@ extern "C" __cxa_dependent_exception * __cxa_allocate_dependent_exception() thro
+ extern "C" void __cxa_free_dependent_exception(__cxa_dependent_exception *vptr) throw(){
+ 	free( (char *)(vptr) );
+ }
+-}
++
++}  /* namespace __cxxabiv1 */
+diff --git a/tests/newdeltest.cpp b/tests/newdeltest.cpp
+index 9f8d775..06e41a1 100644
+--- a/tests/newdeltest.cpp
++++ b/tests/newdeltest.cpp
+@@ -15,7 +15,7 @@ public:
+ 	base() : a(0){
+ 		printf("Executing default base class constructor. a: %i\n", a);
+ 	}
+-	
++
+ 	virtual ~base(){
+ 		printf("Executing base class destructor\n");
+ 	}
+@@ -75,7 +75,7 @@ int main(){
+ 	b = new sub[1];
+ 	b[0].print();
+ 	delete [] b;
+-	b = 0;	
++	b = 0;
+ 
+ 	printf("Testing nothrow new\n");
+ 
+-- 
+2.20.1
+

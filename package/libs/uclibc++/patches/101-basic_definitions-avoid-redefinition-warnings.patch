@@ -1,0 +1,32 @@
+From 8100f081cc3d9e378aded6f8077197e3f943080b Mon Sep 17 00:00:00 2001
+From: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+Date: Mon, 18 Jun 2012 10:20:56 +0200
+Subject: [PATCH] basic_definitions: avoid redefinition warnings
+
+Signed-off-by: Bernhard Reutner-Fischer <rep.dot.nop@gmail.com>
+---
+ include/basic_definitions | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/include/basic_definitions b/include/basic_definitions
+index e0392b8..d4b6cd5 100644
+--- a/include/basic_definitions
++++ b/include/basic_definitions
+@@ -56,11 +56,9 @@ namespace std{
+ 
+ #pragma GCC visibility pop
+ 
+-#endif
+-
+-
+-#ifdef __DODEBUG__
++# ifdef __DODEBUG__
+ 	#define UCLIBCXX_DEBUG 1
+-#else
++# else
+ 	#define UCLIBCXX_DEBUG 0
++# endif
+ #endif
+-- 
+2.20.1
+
