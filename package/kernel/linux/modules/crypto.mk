@@ -726,14 +726,16 @@ define KernelPackage/crypto-user
   TITLE:=CryptoAPI userspace interface
   DEPENDS:=+kmod-crypto-hash +kmod-crypto-manager
   KCONFIG:= \
+	CONFIG_CRYPTO_USER \
 	CONFIG_CRYPTO_USER_API \
 	CONFIG_CRYPTO_USER_API_HASH \
 	CONFIG_CRYPTO_USER_API_SKCIPHER
   FILES:= \
 	$(LINUX_DIR)/crypto/af_alg.ko \
 	$(LINUX_DIR)/crypto/algif_hash.ko \
-	$(LINUX_DIR)/crypto/algif_skcipher.ko
-  AUTOLOAD:=$(call AutoLoad,09,af_alg algif_hash algif_skcipher)
+	$(LINUX_DIR)/crypto/algif_skcipher.ko \
+	$(LINUX_DIR)/crypto/crypto_user.ko
+  AUTOLOAD:=$(call AutoLoad,09,af_alg algif_hash algif_skcipher, crypto_user)
   $(call AddDepends/crypto)
 endef
 
