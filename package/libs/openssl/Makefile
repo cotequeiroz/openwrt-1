@@ -32,7 +32,11 @@ PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:openssl:openssl
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_OPENSSL_ENGINE \
-	CONFIG_OPENSSL_ENGINE_CRYPTO \
+	CONFIG_OPENSSL_ENGINE_AFALG_ZC \
+	CONFIG_OPENSSL_ENGINE_BUILTIN \
+	CONFIG_OPENSSL_ENGINE_BUILTIN_AFALG \
+	CONFIG_OPENSSL_ENGINE_BUILTIN_DEVCRYPTO \
+	CONFIG_OPENSSL_ENGINE_BUILTIN_PADLOCK \
 	CONFIG_OPENSSL_NO_DEPRECATED \
 	CONFIG_OPENSSL_OPTIMIZE_SPEED \
 	CONFIG_OPENSSL_PREFER_CHACHA_OVER_GCM \
@@ -89,7 +93,10 @@ endef
 define Package/libopenssl
 $(call Package/openssl/Default)
   SUBMENU:=SSL
-  DEPENDS:=+OPENSSL_WITH_COMPRESSION:zlib
+  DEPENDS:=+OPENSSL_WITH_COMPRESSION:zlib \
+	   +OPENSSL_ENGINE_BUILTIN_AFALG:kmod-crypto-user \
+	   +OPENSSL_ENGINE_BUILTIN_DEVCRYPTO:kmod-cryptodev \
+	   +OPENSSL_ENGINE_BUILTIN_PADLOCK:kmod-crypto-hw-padlock
   TITLE+= (libraries)
   ABI_VERSION:=1.1
   MENU:=1
@@ -134,7 +141,7 @@ define Package/libopenssl-afalg
   SUBMENU:=SSL
   TITLE:=AFALG hardware acceleration engine
   DEPENDS:=libopenssl @OPENSSL_ENGINE @KERNEL_AIO @!LINUX_3_18 +kmod-crypto-user \
-	   +libopenssl-conf
+	   +libopenssl-conf @!OPENSSL_ENGINE_BUILTIN
 endef
 
 define Package/libopenssl-afalg/description
@@ -145,12 +152,28 @@ See https://www.openssl.org/docs/man1.1.1/man5/config.html#Engine-Configuration-
 The engine_id is "afalg"
 endef
 
+define Package/libopenssl-devcrypto
+  $(call Package/openssl/Default)
+  SUBMENU:=SSL
+  TITLE:=/dev/crypto hardware acceleration engine
+  DEPENDS:=libopenssl @OPENSSL_ENGINE +kmod-cryptodev +libopenssl-conf \
+	   @!OPENSSL_ENGINE_BUILTIN
+endef
+
+define Package/libopenssl-devcrypto/description
+This package adds an engine that enables hardware acceleration
+through the /dev/crypto kernel interface.
+To use it, you need to configure the engine in /etc/ssl/openssl.cnf
+See https://www.openssl.org/docs/man1.1.1/man5/config.html#Engine-Configuration-Module
+The engine_id is "devcrypto"
+endef
+
 define Package/libopenssl-padlock
   $(call Package/openssl/Default)
   SUBMENU:=SSL
   TITLE:=VIA Padlock hardware acceleration engine
   DEPENDS:=libopenssl @OPENSSL_ENGINE @TARGET_x86 +kmod-crypto-hw-padlock \
-	   +libopenssl-conf
+	   +libopenssl-conf @!OPENSSL_ENGINE_BUILTIN
 endef
 
 define Package/libopenssl-padlock/description
@@ -161,6 +184,10 @@ The engine_id is "padlock"
 endef
 
 OPENSSL_OPTIONS:= shared
+
+ifdef CONFIG_OPENSSL_ENGINE_AFALG_ZC
+  OPENSSL_OPTIONS += -DALG_ZERO_COPY
+endif
 
 ifndef CONFIG_OPENSSL_WITH_BLAKE2
   OPENSSL_OPTIONS += no-blake2
@@ -244,14 +271,27 @@ else
 endif
 
 ifdef CONFIG_OPENSSL_ENGINE
-  ifdef CONFIG_OPENSSL_ENGINE_CRYPTO
-    OPENSSL_OPTIONS += enable-devcryptoeng
-  endif
-  ifndef CONFIG_PACKAGE_libopenssl-afalg
-    OPENSSL_OPTIONS += no-afalgeng
-  endif
-  ifndef CONFIG_PACKAGE_libopenssl-padlock
-    OPENSSL_OPTIONS += no-hw-padlock
+  ifdef CONFIG_OPENSSL_ENGINE_BUILTIN
+    OPENSSL_OPTIONS += disable-dynamic-engine
+    ifndef CONFIG_OPENSSL_ENGINE_BUILTIN_AFALG
+      OPENSSL_OPTIONS += no-afalgeng
+    endif
+    ifdef CONFIG_OPENSSL_ENGINE_BUILTIN_DEVCRYPTO
+      OPENSSL_OPTIONS += enable-devcryptoeng
+    endif
+    ifndef CONFIG_OPENSSL_ENGINE_BUILTIN_PADLOCK
+      OPENSSL_OPTIONS += no-hw-padlock
+    endif
+  else
+    ifdef CONFIG_PACKAGE_libopenssl-devcrypto
+      OPENSSL_OPTIONS += enable-devcryptoeng
+    endif
+    ifndef CONFIG_PACKAGE_libopenssl-afalg
+      OPENSSL_OPTIONS += no-afalgeng
+    endif
+    ifndef CONFIG_PACKAGE_libopenssl-padlock
+      OPENSSL_OPTIONS += no-hw-padlock
+    endif
   endif
 else
   OPENSSL_OPTIONS += no-engine
@@ -367,6 +407,11 @@ define Package/libopenssl-afalg/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/$(ENGINES_DIR)/afalg.so $(1)/usr/lib/$(ENGINES_DIR)
 endef
 
+define Package/libopenssl-devcrypto/install
+	$(INSTALL_DIR) $(1)/usr/lib/$(ENGINES_DIR)
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/$(ENGINES_DIR)/devcrypto.so $(1)/usr/lib/$(ENGINES_DIR)
+endef
+
 define Package/libopenssl-padlock/install
 	$(INSTALL_DIR) $(1)/usr/lib/$(ENGINES_DIR)
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/lib/$(ENGINES_DIR)/*padlock.so $(1)/usr/lib/$(ENGINES_DIR)
@@ -375,5 +420,6 @@ endef
 $(eval $(call BuildPackage,libopenssl))
 $(eval $(call BuildPackage,libopenssl-conf))
 $(eval $(call BuildPackage,libopenssl-afalg))
+$(eval $(call BuildPackage,libopenssl-devcrypto))
 $(eval $(call BuildPackage,libopenssl-padlock))
 $(eval $(call BuildPackage,openssl-util))
