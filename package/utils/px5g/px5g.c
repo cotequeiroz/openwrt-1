@@ -3,6 +3,7 @@
  *
  *   Copyright (C) 2009 Steven Barth <steven@midlink.org>
  *   Copyright (C) 2014 Felix Fietkau <nbd@nbd.name>
+ *   Copyright (C) 2019 Eneas U de Queiroz <cotequeiroz@gmail.com>
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -36,7 +37,7 @@
 #include <mbedtls/rsa.h>
 #include <mbedtls/pk.h>
 
-#define PX5G_VERSION "0.2"
+#define PX5G_VERSION "0.3"
 #define PX5G_COPY "Copyright (c) 2009 Steven Barth <steven@midlink.org>"
 #define PX5G_LICENSE "Licensed under the GNU Lesser General Public License v2.1"
 
@@ -45,8 +46,7 @@ static char buf[16384];
 
 static int _urandom(void *ctx, unsigned char *out, size_t len)
 {
-	read(urandom_fd, out, len);
-	return 0;
+	return (read(urandom_fd, out, len) != len);
 }
 
 static void write_file(const char *path, int len, bool pem)
@@ -108,7 +108,7 @@ static void write_key(mbedtls_pk_context *key, const char *path, bool pem)
 }
 
 static void gen_key(mbedtls_pk_context *key, bool rsa, int ksize, int exp,
-		    mbedtls_ecp_group_id curve, bool pem)
+		    mbedtls_ecp_group_id curve)
 {
 	mbedtls_pk_init(key);
 	if (rsa) {
@@ -157,12 +157,74 @@ int dokey(bool rsa, char **arg)
 		}
 	}
 
-	gen_key(&key, rsa, ksize, exp, curve, pem);
+	gen_key(&key, rsa, ksize, exp, curve);
 	write_key(&key, path, pem);
 
 	mbedtls_pk_free(&key);
 
 	return 0;
+}
+
+static time_t time_from_x509(const mbedtls_x509_time *x509)
+{
+	struct tm tm={0};
+
+	tm.tm_year = x509->year - 1900;
+	tm.tm_mon = x509->mon - 1;
+	tm.tm_mday = x509->day;
+	tm.tm_hour = x509->hour;
+	tm.tm_min = x509->min;
+	tm.tm_sec = x509->sec;
+	return mktime(&tm);
+}
+
+int verify(char **arg)
+{
+	mbedtls_x509_crt cert, CA;
+	uint32_t flags;
+	int ret = 1;
+	time_t attime = time(NULL);
+	char *certfile, *CAfile = NULL;
+	bool no_check_time = false;
+
+	while (*arg && **arg == '-') {
+		if (!strcmp(*arg, "-attime") && arg[1]) {
+			attime = (time_t)atoll(arg[1]);
+			arg++;
+		} else if (!strcmp(*arg, "-CAfile") && arg[1]) {
+			CAfile = arg[1];
+			arg++;
+		} else if (!strcmp(*arg, "-no_check_time")) {
+			no_check_time = true;
+		} else {
+			fprintf(stderr, "warning: Ignoring unknown parameter %s\n", *arg);
+		}
+		arg++;
+	}
+	if (!*arg) {
+		fprintf(stderr, "missing cert filename.\n");
+		return 1;
+	}
+	certfile = *arg;
+	mbedtls_x509_crt_init(&cert);
+	mbedtls_x509_crt_init(&CA);
+	if (mbedtls_x509_crt_parse_file(&cert, certfile) != 0
+		|| cert.next != NULL
+		|| (CAfile != NULL && mbedtls_x509_crt_parse_file(&CA, CAfile) != 0)) {
+		fprintf(stderr, "unable to load certifcates\n");
+	} else if ((!no_check_time && (attime > time_from_x509(&cert.valid_to)
+			|| attime < time_from_x509(&cert.valid_from)))
+		|| (mbedtls_x509_crt_verify(&cert, &CA, NULL, NULL, &flags, NULL, NULL) != 0
+			&& (flags & ~(MBEDTLS_X509_BADCERT_EXPIRED |
+				MBEDTLS_X509_BADCERT_FUTURE)) != 0)) {
+		printf("error %s: verification failed\n", certfile);
+	} else {
+		ret = 0;
+		printf("%s: OK\n", certfile);
+	}
+	mbedtls_x509_crt_free(&cert);
+	mbedtls_x509_crt_free(&CA);
+	return ret;
 }
 
 int selfsigned(char **arg)
@@ -172,7 +234,7 @@ int selfsigned(char **arg)
 	mbedtls_mpi serial;
 
 	char *subject = "";
-	unsigned int ksize = 512;
+	unsigned int ksize = 2048;
 	int exp = 65537;
 	unsigned int days = 30;
 	char *keypath = NULL, *certpath = NULL;
@@ -247,7 +309,7 @@ int selfsigned(char **arg)
 		}
 		arg++;
 	}
-	gen_key(&key, rsa, ksize, exp, curve, pem);
+	gen_key(&key, rsa, ksize, exp, curve);
 
 	if (keypath)
 		write_key(&key, keypath, pem);
@@ -282,18 +344,15 @@ int selfsigned(char **arg)
 	mbedtls_x509write_crt_set_serial(&cert, &serial);
 
 	if (pem) {
-		if (mbedtls_x509write_crt_pem(&cert, (void *) buf, sizeof(buf), _urandom, NULL) < 0) {
-			fprintf(stderr, "Failed to generate certificate\n");
-			return 1;
-		}
-
-		len = strlen(buf);
+		len = mbedtls_x509write_crt_pem(&cert, (void *) buf, sizeof(buf), _urandom, NULL);
+		if (len == 0)
+			len = strlen(buf);
 	} else {
 		len = mbedtls_x509write_crt_der(&cert, (void *) buf, sizeof(buf), _urandom, NULL);
-		if (len < 0) {
-			fprintf(stderr, "Failed to generate certificate: %d\n", len);
-			return 1;
-		}
+	}
+	if (len < 0) {
+		fprintf(stderr, "Failed to generate certificate: %d\n", len);
+		return 1;
 	}
 	write_file(certpath, len, pem);
 
@@ -316,11 +375,13 @@ int main(int argc, char *argv[])
 		return dokey(true, argv+2);
 	} else if (!strcmp(argv[1], "selfsigned")) {
 		return selfsigned(argv+2);
+	} else if (!strcmp(argv[1], "verify")) {
+		return verify(argv+2);
 	}
 
 	fprintf(stderr,
 		"PX5G X.509 Certificate Generator Utility v" PX5G_VERSION "\n" PX5G_COPY
 		"\nbased on PolarSSL by Christophe Devine and Paul Bakker\n\n");
-	fprintf(stderr, "Usage: %s [eckey|rsakey|selfsigned]\n", *argv);
+	fprintf(stderr, "Usage: %s [eckey|rsakey|selfsigned|verify]\n", *argv);
 	return 1;
 }
