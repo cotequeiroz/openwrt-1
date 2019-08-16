@@ -1,0 +1,45 @@
+From 18259d9a4e79a93bd317f442713600e3e09df6a0 Mon Sep 17 00:00:00 2001
+From: Eneas U de Queiroz <cotequeiroz@gmail.com>
+Date: Fri, 16 Aug 2019 15:01:11 -0300
+Subject: [PATCH] build with afalg and aesccm
+
+Signed-off-by: Eneas U de Queiroz <cotequeiroz@gmail.com>
+---
+ configure.ac        | 4 ++++
+ wolfcrypt/src/aes.c | 5 ++---
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index cf03e7f52..3de6019d0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1047,6 +1047,10 @@ if test "$ENABLED_AFALG" = "yes"
+ then
+     AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_AFALG"
+     AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_AFALG_HASH"
++    if test "$ENABLED_AESCCM" = "yes"
++    then
++        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_AES_DIRECT"
++    fi
+ fi
+ 
+ if test "$ENABLED_AFALG" = "xilinx"
+diff --git a/wolfcrypt/src/aes.c b/wolfcrypt/src/aes.c
+index b583d03e9..2deb47101 100644
+--- a/wolfcrypt/src/aes.c
++++ b/wolfcrypt/src/aes.c
+@@ -756,9 +756,8 @@
+             return 0;
+         }
+ 
+-#elif defined(WOLFSSL_AFALG)
+-#elif defined(WOLFSSL_DEVCRYPTO_AES)
+-    /* if all AES is enabled with devcrypto then tables are not needed */
++#elif defined(WOLFSSL_AFALG) || defined(WOLFSSL_DEVCRYPTO_AES)
++    /* if all AES is enabled with devcrypto or AFALG, then tables are not needed */
+ 
+     #if defined(HAVE_AESCCM)
+     static int wc_AesEncrypt(Aes* aes, const byte* inBlock, byte* outBlock)
+-- 
+2.21.0
+
