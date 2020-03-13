@@ -29,12 +29,16 @@ static const char mconf_readme[] = N_(
 "Some may be made into installable ipkg packages. Some features\n"
 "may be completely removed altogether.\n"
 "\n"
-"Menu items beginning with [*], <M> or [ ] represent features\n"
-"configured to be included, built as package or removed respectively.\n"
-"Pointed brackets <> represent packaging capable features.\n"
+"Menu items beginning with following braces represent features that\n"
+"  [ ] can be built in or removed\n"
+"  < > can be built in, packaged or removed\n"
+"  { } can be built in or packaged (selected by other feature)\n"
+"  - - are selected by other feature,\n"
+"while *, M or whitespace inside braces means to build in, build as\n"
+"a package or to exclude the feature respectively.\n"
 "\n"
 "To change any of these features, highlight it with the cursor\n"
-"keys and press <Y> to build it in, <M> to make it a module or\n"
+"keys and press <Y> to build it in, <M> to make it a package or\n"
 "<N> to remove it.  You may also press the <Space Bar> to cycle\n"
 "through the available options (i.e. Y->N->M->Y).\n"
 "\n"
@@ -172,7 +176,7 @@ menu_instructions[] = N_(
 	"Arrow keys navigate the menu.  "
 	"<Enter> selects submenus ---> (or empty submenus ----).  "
 	"Highlighted letters are hotkeys.  "
-	"Pressing <Y> includes, <N> excludes, <M> modularizes features.  "
+	"Pressing <Y> includes, <N> excludes, <M> packages features.  "
 	"Press <Esc><Esc> to exit, <?> for Help, </> for Search.  "
 	"Legend: [*] built-in  [ ] excluded  <M> module  < > module capable"),
 radiolist_instructions[] = N_(
@@ -191,8 +195,8 @@ inputbox_instructions_string[] = N_(
 	"Please enter a string value. "
 	"Use the <TAB> key to move from the input field to the buttons below it."),
 setmod_text[] = N_(
-	"This feature depends on another which has been configured as a module.\n"
-	"As a result, this feature will be built as a module."),
+	"This feature depends on another which has been configured as a package.\n"
+	"As a result, this feature will be built as a package."),
 load_config_text[] = N_(
 	"Enter the name of the configuration file you wish to load.  "
 	"Accept the name shown to restore the configuration you "
