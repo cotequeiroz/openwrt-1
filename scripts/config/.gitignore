@@ -1,15 +1,8 @@
 #
 # Generated files
 #
-config*
-*.lex.c
-*.tab.c
-*.tab.h
-zconf.hash.c
 *.moc
-gconf.glade.h
-*.pot
-*.mo
+*conf-cfg
 
 #
 # configuration programs
@@ -19,9 +12,9 @@ mconf
 nconf
 qconf
 gconf
-kxgettext
 
 #
-# openwrt changes
+# Added by openwrt
 #
-.tmp*
+*.lex.c
+*.tab.[ch]
