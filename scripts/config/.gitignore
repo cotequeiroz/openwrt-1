@@ -1,15 +1,20 @@
-*.o
-conf*
-!conf*.c
-!conf*.h
-mconf*
-!mconf*.c
-!mconf*.h
-mconf_check
-*.*.c
-qconf*
-qconf*.moc
-!qconf*.cc
-!qconf*.h
-!images*.c
-.tmp_qtcheck
+#
+# Generated files
+#
+*.moc
+*conf-cfg
+
+#
+# configuration programs
+#
+conf
+mconf
+nconf
+qconf
+gconf
+
+#
+# Added by openwrt
+#
+*.lex.c
+*.tab.[ch]
