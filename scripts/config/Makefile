@@ -1,19 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0
 # ===========================================================================
 # OpenWrt configuration targets
 
-.PHONY: clean all $(PHONY)
+.PHONY: clean all
 all: conf mconf
 clean:
-	rm -f *.o lxdialog/*.o *.moc $(clean-files) conf mconf qconf
+	rm -f *.o lxdialog/*.o *.moc $(clean-files) conf mconf nconf qconf
+
+clean-files	:= lexer.lex.c parser.tab.c parser.tab.h
 
 # ===========================================================================
 # Variables needed by the upstream Makefile
 
-HOSTCC := $(CC)
-HOSTCFLAGS:= $(CFLAGS)
-CFLAGS += $(HOST_EXTRACFLAGS)
-CXXFLAGS += $(HOST_EXTRACFLAGS)
-
+# Avoids displaying 'UPD mconf-cfg' in an otherwise quiet make menuconfig
 kecho:=true
 
 CONFIG_SHELL:=$(SHELL)
@@ -24,108 +23,77 @@ Q:=$(if $V,,@)
 cmd = $(cmd_$(1))
 dot-target = $(dir $@).$(notdir $@)
 
-### Stripped down upstream Makefile follows
+# taken from ../Kbuild.include
+define filechk
+	$(Q)set -e;						\
+	mkdir -p $(dir $@);					\
+	trap "rm -f $(dot-target).tmp" EXIT;			\
+	{ $(filechk_$(1)); } > $(dot-target).tmp;		\
+	if [ ! -r $@ ] || ! cmp -s $@ $(dot-target).tmp; then	\
+		$(kecho) '  UPD     $@';			\
+		mv -f $(dot-target).tmp $@;			\
+	fi
+endef
+
+### Stripped down upstream Makefile follows:
 # ===========================================================================
-
-# lxdialog stuff
-check-lxdialog  := $(srctree)/$(src)/lxdialog/check-lxdialog.sh
-
-# Use recursively expanded variables so we do not call gcc unless
-# we really need to do so. (Do not call gcc as part of make mrproper)
-HOST_EXTRACFLAGS += $(shell $(CONFIG_SHELL) $(check-lxdialog) -ccflags) \
-                    -DLOCALE
-
-# ===========================================================================
-# Shared Makefile for the various kconfig executables:
-# conf:	  Used for defconfig, oldconfig and related targets
-# nconf:  Used for the nconfig target.
-#         Utilizes ncurses
-# mconf:  Used for the menuconfig target
-#         Utilizes the lxdialog package
-# qconf:  Used for the xconfig target
-#         Based on Qt which needs to be installed to compile it
 # object files used by all kconfig flavours
+common-objs	:= confdata.o expr.o lexer.lex.o parser.tab.o preprocess.o \
+		   symbol.o util.o
 
-lxdialog := lxdialog/checklist.o lxdialog/util.o lxdialog/inputbox.o
-lxdialog += lxdialog/textbox.o lxdialog/yesno.o lxdialog/menubox.o
+$(obj)/lexer.lex.o: $(obj)/parser.tab.h
+HOSTCFLAGS_lexer.lex.o	:= -I $(srctree)/$(src)
+HOSTCFLAGS_parser.tab.o	:= -I $(srctree)/$(src)
 
-conf-objs	:= conf.o  zconf.tab.o
-mconf-objs     := mconf.o zconf.tab.o $(lxdialog)
-nconf-objs     := nconf.o zconf.tab.o nconf.gui.o
+# conf: Used for defconfig, oldconfig and related targets
+hostprogs-y	+= conf
+conf-objs	:= conf.o $(common-objs)
+
+# nconf: Used for the nconfig target based on ncurses
+hostprogs-y	+= nconf
+nconf-objs	:= nconf.o nconf.gui.o $(common-objs)
+
+HOSTLDLIBS_nconf	= $(shell . $(obj)/nconf-cfg && echo $$libs)
+HOSTCFLAGS_nconf.o	= $(shell . $(obj)/nconf-cfg && echo $$cflags)
+HOSTCFLAGS_nconf.gui.o	= $(shell . $(obj)/nconf-cfg && echo $$cflags)
+
+$(obj)/nconf.o $(obj)/nconf.gui.o: $(obj)/nconf-cfg
+
+# mconf: Used for the menuconfig target based on lxdialog
+hostprogs-y	+= mconf
+lxdialog	:= $(addprefix lxdialog/, \
+		     checklist.o inputbox.o menubox.o textbox.o util.o yesno.o)
+mconf-objs	:= mconf.o $(lxdialog) $(common-objs)
+
+HOSTLDLIBS_mconf = $(shell . $(obj)/mconf-cfg && echo $$libs)
+$(foreach f, mconf.o $(lxdialog), \
+  $(eval HOSTCFLAGS_$f = $$(shell . $(obj)/mconf-cfg && echo $$$$cflags)))
+
+$(addprefix $(obj)/, mconf.o $(lxdialog)): $(obj)/mconf-cfg
+
+# qconf: Used for the xconfig target based on Qt
+hostprogs-y	+= qconf
 qconf-cxxobjs	:= qconf.o
-qconf-objs	:= zconf.tab.o
+qconf-objs	:= images.o $(common-objs)
 
-hostprogs-y := conf nconf mconf qconf
+HOSTLDLIBS_qconf	= $(shell . $(obj)/qconf-cfg && echo $$libs)
+HOSTCXXFLAGS_qconf.o	= $(shell . $(obj)/qconf-cfg && echo $$cflags)
 
-clean-files	:= qconf.moc .tmp_qtcheck
-clean-files	+= zconf.tab.c zconf.lex.c zconf.hash.c
-
-# Check that we have the required ncurses stuff installed for lxdialog (menuconfig)
-PHONY += $(obj)/dochecklxdialog
-$(addprefix $(obj)/,$(lxdialog)): $(obj)/dochecklxdialog
-$(obj)/dochecklxdialog:
-	$(Q)$(CONFIG_SHELL) $(check-lxdialog) -check $(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTLOADLIBES_mconf)
-
-always := dochecklxdialog
-
-HOST_EXTRACFLAGS += -DKBUILD_NO_NLS
-
-# generated files seem to need this to find local include files
-HOSTCFLAGS_zconf.lex.o	:= -I$(src)
-HOSTCFLAGS_zconf.tab.o	:= -I$(src)
-
-LEX_PREFIX_zconf	:= zconf
-YACC_PREFIX_zconf	:= zconf
-
-HOSTLOADLIBES_qconf	= $(KC_QT_LIBS)
-HOSTCXXFLAGS_qconf.o	= $(KC_QT_CFLAGS)
-
-HOSTLOADLIBES_mconf   = $(shell $(CONFIG_SHELL) $(check-lxdialog) -ldflags $(HOSTCC))
-
-HOSTLOADLIBES_nconf	= $(shell \
-				pkg-config --libs menuw panelw ncursesw 2>/dev/null \
-				|| pkg-config --libs menu panel ncurses 2>/dev/null \
-				|| echo "-lmenu -lpanel -lncurses"  )
-$(obj)/qconf.o: $(obj)/.tmp_qtcheck
-
-# openwrt: target is qconf, not xconfig
-#ifeq ($(MAKECMDGOALS)),xconfig)
-ifeq ($(filter qconf,$(MAKECMDGOALS)),qconf)
-$(obj)/.tmp_qtcheck: $(src)/Makefile
--include $(obj)/.tmp_qtcheck
-
-# Qt needs some extra effort...
-$(obj)/.tmp_qtcheck:
-	@set -e; $(kecho) "  CHECK   qt"; \
-	if pkg-config --exists Qt5Core; then \
-	    cflags="-std=c++11 -fPIC `pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets`"; \
-	    libs=`pkg-config --libs Qt5Core Qt5Gui Qt5Widgets`; \
-	    moc=`pkg-config --variable=host_bins Qt5Core`/moc; \
-	elif pkg-config --exists QtCore; then \
-	    cflags=`pkg-config --cflags QtCore QtGui`; \
-	    libs=`pkg-config --libs QtCore QtGui`; \
-	    moc=`pkg-config --variable=moc_location QtCore`; \
-	else \
-	    echo >&2 "*"; \
-	    echo >&2 "* Could not find Qt via pkg-config."; \
-	    echo >&2 "* Please install either Qt 4.8 or 5.x. and make sure it's in PKG_CONFIG_PATH"; \
-	    echo >&2 "*"; \
-	    exit 1; \
-	fi; \
-	echo "KC_QT_CFLAGS=$$cflags" > $@; \
-	echo "KC_QT_LIBS=$$libs" >> $@; \
-	echo "KC_QT_MOC=$$moc" >> $@
-endif
-
-$(obj)/zconf.tab.o: $(obj)/zconf.lex.c $(obj)/zconf.hash.c
-
-$(obj)/qconf.o: $(obj)/qconf.moc
+$(obj)/qconf.o: $(obj)/qconf-cfg $(obj)/qconf.moc
 
 quiet_cmd_moc = MOC     $@
-      cmd_moc = $(KC_QT_MOC) -i $< -o $@
+      cmd_moc = $(shell . $(obj)/qconf-cfg && echo $$moc) -i $< -o $@
 
-$(obj)/%.moc: $(src)/%.h $(obj)/.tmp_qtcheck
+$(obj)/%.moc: $(src)/%.h $(obj)/qconf-cfg
 	$(call cmd,moc)
+
+# check if necessary packages are available, and configure build flags
+filechk_conf_cfg = $(CONFIG_SHELL) $<
+
+$(obj)/%conf-cfg: $(src)/%conf-cfg.sh FORCE
+	$(call filechk,conf_cfg)
+
+clean-files += *conf-cfg
 
 # ===========================================================================
 # OpenWrt rules and final adjustments that need to be made after reading the
@@ -133,20 +101,17 @@ $(obj)/%.moc: $(src)/%.h $(obj)/.tmp_qtcheck
 
 FORCE:
 
-%.tab.c: %.y
-	bison -l -b $* -p $(notdir $*) $<
+%.tab.c %.tab.h: %.y
+	bison -l -d -b $* $<
 
 %.lex.c: %.l
-	flex -L -P$(notdir $*) -o$@ $<
-
-%.hash.c: %.gperf
-	gperf < $< > $@
+	flex -L -o$@ $<
 
 $(foreach f, mconf.o $(lxdialog), \
   $(eval $f: CFLAGS+=$$(HOSTCFLAGS_$f)))
 
-$(obj)/zconf.lex.o: CFLAGS += $(HOSTCFLAGS_zconf.lex.o)
-$(obj)/zconf.tab.o: CFLAGS += $(HOSTCFLAGS_zconf.tab.o)
+$(obj)/lexer.lex.o: CFLAGS += $(HOSTCFLAGS_lexer.lex.o)
+$(obj)/parser.tab.o: CFLAGS += $(HOSTCFLAGS_parser.tab.o)
 $(obj)/qconf.o: CXXFLAGS+=$(HOSTCXXFLAGS_qconf.o)
 
 conf: $(conf-objs)
@@ -155,11 +120,11 @@ conf: $(conf-objs)
 # avoid sourcing it before the script is built, when trying to compute CFLAGS
 # for the actual first prerequisite.  This avoids errors like:
 # '/bin/sh: ./mconf-cfg: No such file or directory'
-mconf: $(mconf-objs)
-	$(CC) -o $@ $(filter-out mconf-cfg,$^) $(HOSTLOADLIBES_mconf)
+mconf: mconf-cfg $(mconf-objs)
+	$(CC) -o $@ $(filter-out mconf-cfg,$^) $(HOSTLDLIBS_mconf)
 
-nconf: $(nconf-objs)
-	$(CC) -o $@ $(filter-out nconf-cfg,$^) $(HOSTLOADLIBES_nconf)
+nconf: nconf-cfg $(nconf-objs)
+	$(CC) -o $@ $(filter-out nconf-cfg,$^) $(HOSTLDLIBS_nconf)
 
-qconf: $(qconf-cxxobjs) $(qconf-objs)
-	$(CXX) -o $@ $(filter-out qconf-cfg,$^) $(HOSTLOADLIBES_qconf)
+qconf: qconf-cfg $(qconf-cxxobjs) $(qconf-objs)
+	$(CXX) -o $@ $(filter-out qconf-cfg,$^) $(HOSTLDLIBS_qconf)
