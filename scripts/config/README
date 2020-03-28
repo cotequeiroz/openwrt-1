@@ -2,7 +2,7 @@ These files were taken from the Linux Kernel Configuration System
 at commit eb90251da56385cc6d485ea5e22573eba7a4b8e7
 and modified for the OpenWrt Buildroot:
  - adjusted the Makefile to compile outside the kernel
- - removed nconf, gconf, tests and kernel configuration targets
+ - removed gconf, tests and kernel configuration targets
  - added a 'reset' command to reset config when the target changes
  - allow config reading from & writing to a diffferent file
 For a full list of changes, see the repository at:
