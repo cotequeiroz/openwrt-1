@@ -25,10 +25,11 @@ else
 PKG_JOBS?=$(if $(PKG_BUILD_PARALLEL),$(MAKE_J),-j1)
 endif
 ifdef CONFIG_USE_MIPS16
+  TARGET_ASFLAGS_DEFAULT = $(filter-out -mips16 -minterlink-mips16,$(TARGET_CFLAGS))
   ifeq ($(strip $(PKG_USE_MIPS16)),1)
-    TARGET_ASFLAGS_DEFAULT = $(filter-out -mips16 -minterlink-mips16,$(TARGET_CFLAGS))
-    TARGET_CFLAGS += -mips16 -minterlink-mips16
+    TARGET_CFLAGS += -mips16
   endif
+  TARGET_CFLAGS += -minterlink-mips16
 endif
 ifeq ($(strip $(PKG_IREMAP)),1)
   IREMAP_CFLAGS = $(call iremap,$(PKG_BUILD_DIR),$(notdir $(PKG_BUILD_DIR)))
